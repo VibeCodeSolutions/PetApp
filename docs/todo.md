@@ -100,45 +100,49 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 
 ## Phase 3: Gesundheitsmanagement
 
-### Sprint 3.1: Vaccination-Entity & UI
+### Sprint 3.1: Vaccination-Entity & UI ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Impfungen erfassen und anzeigen
 **Dateien:** `:core:database`, `:feature:health`
-- [ ] `Vaccination` Room-Entity + `VaccinationDao`
-- [ ] DB-Migration
-- [ ] `VaccinationRepository`
-- [ ] `VaccinationListViewModel` + `VaccinationListScreen`
-- [ ] Impfung-hinzufuegen-Formular (Name, Datum, Turnus, Tierarzt, Chargen-Nr.)
-- [ ] Turnus-Berechnung: `nextDueDate = dateAdministered + intervalMonths`
+- [x] `Vaccination` Room-Entity + `VaccinationDao`
+- [x] DB-Migration 3->4
+- [x] `VaccinationRepository` (Interface in :core:model, Impl in :core:database)
+- [x] `VaccinationListViewModel` + `VaccinationListScreen`
+- [x] Impfung-hinzufuegen-Formular (Name, Datum, Turnus, Tierarzt, Chargen-Nr.)
+- [x] Turnus-Berechnung: `nextDueDate = dateAdministered + intervalMonths`
 - [ ] Verifizierung: Impfung anlegen, naechster Termin wird berechnet
 
-### Sprint 3.2: Medizinische Akte & Medikamente
+### Sprint 3.2: Medizinische Akte & Medikamente ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Allergien, Diagnosen, Medikamente erfassen
 **Dateien:** `:core:database`, `:feature:health`
-- [ ] `MedicalRecord` Room-Entity + DAO + Repository
-- [ ] `Medication` Room-Entity + DAO + Repository
-- [ ] DB-Migration
-- [ ] UI: MedicalRecord-Liste (gefiltert nach Typ), Hinzufuegen-Formular
-- [ ] UI: Medikamenten-Liste, Hinzufuegen-Formular (Name, Dosierung, Frequenz, Vorrat)
-- [ ] Nachschub-Berechnung: `daysRemaining = currentStock / dailyConsumption`
+- [x] `MedicalRecord` Room-Entity + DAO + Repository
+- [x] `Medication` Room-Entity + DAO + Repository
+- [x] DB-Migration 4->5 (medical_record + medication in einer Migration)
+- [x] UI: MedicalRecord-Liste (FilterChip nach Typ via flatMapLatest), Hinzufuegen-Formular
+- [x] UI: Medikamenten-Liste, Hinzufuegen-Formular (Name, Dosierung, Frequenz, Vorrat), Vorrat-Update-Dialog
+- [x] Nachschub-Berechnung: `daysRemaining = currentStock / dailyConsumption` (Domain-Property)
 - [ ] Verifizierung: Allergien, Medikamente anlegen und anzeigen
 
-### Sprint 3.3: Erinnerungen & Notifications
+### Sprint 3.3: Erinnerungen & Notifications ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** WorkManager-Scheduling, Notification Channels, Reminder-Entity
 **Dateien:** `:core:notifications`, `:core:database`
-- [ ] `Reminder` Room-Entity + DAO
-- [ ] 5 Notification Channels erstellen (in Application.onCreate)
-- [ ] `DailyHealthCheckWorker`: prueft Impftermine + Medikamentenvorraete
-- [ ] Lokale Notifications: Impfung (4W/1W/Tag vorher), Nachschub (bei Schwelle)
-- [ ] Erinnerungen in Room speichern (isCompleted, isSnoozed)
+- [x] `Reminder` Room-Entity + DAO (Unique-Index auf referenceId+triggerAt)
+- [x] DB-Migration 5->6
+- [x] 5 Notification Channels erstellen (in Application.onCreate)
+- [x] `DailyHealthCheckWorker` (@HiltWorker): prueft Impftermine + Medikamentenvorraete
+- [x] Lokale Notifications: Impfung (4W/1W/Tag vorher), Nachschub (bei Schwelle)
+- [x] Erinnerungen in Room speichern (isCompleted, isSnoozed)
+- [x] `TierappApplication` implementiert `Configuration.Provider` fuer HiltWorkerFactory
 - [ ] Verifizierung: Worker laeuft, Notification wird angezeigt
 
-### Sprint 3.4: Gesundheits-Dashboard
+### Sprint 3.4: Gesundheits-Dashboard ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Aggregierte Uebersicht aller faelligen Aktionen
-**Dateien:** `:feature:health`
-- [ ] `HealthDashboardViewModel` (kombiniert Impf- + Medikamenten-Daten)
-- [ ] `HealthDashboardScreen`: faellige Impfungen, niedrige Vorraete, offene Erinnerungen
-- [ ] Sortierung nach Dringlichkeit
-- [ ] Quick-Actions (Impfung als erledigt markieren, Vorrat auffuellen)
+**Dateien:** `:feature:health`, `:app`
+- [x] `HealthDashboardViewModel` (combine: Vaccination + Medication + Reminder Flows)
+- [x] `HealthDashboardScreen`: faellige Impfungen, niedrige Vorraete, offene Erinnerungen
+- [x] Sortierung nach Dringlichkeit (CRITICAL/WARNING/INFO)
+- [x] Quick-Actions: Erledigt-Markieren + Schlummern (1 Tag) fuer Reminder
+- [x] Navigation: GesundheitRoute -> HealthDashboardRoute; ImpfungenRoute, MedizinAkteRoute, MedikamenteRoute registriert
+- [x] PetDetailScreen um Health-Navigations-Section erweitert
 - [ ] Verifizierung: Dashboard zeigt korrekte aggregierte Daten
 
 ---

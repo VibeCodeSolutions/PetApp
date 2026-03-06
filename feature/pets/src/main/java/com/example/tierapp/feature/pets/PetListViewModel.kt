@@ -2,10 +2,14 @@ package com.example.tierapp.feature.pets
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.tierapp.core.model.PetPhotoRepository
 import com.example.tierapp.core.model.PetRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -13,12 +17,25 @@ import javax.inject.Inject
 @HiltViewModel
 class PetListViewModel @Inject constructor(
     petRepository: PetRepository,
+    private val petPhotoRepository: PetPhotoRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<PetListUiState> = petRepository.getAll()
-        .map { pets ->
-            if (pets.isEmpty()) PetListUiState.Empty
-            else PetListUiState.Success(pets)
+        .flatMapLatest { pets ->
+            if (pets.isEmpty()) return@flatMapLatest flowOf(PetListUiState.Empty)
+            val photoFlows = pets.map { pet ->
+                petPhotoRepository.getByPetId(pet.id).map { photos ->
+                    val thumb = photos.firstOrNull { it.id == pet.profilePhotoId }
+                    PetSummary(
+                        id = pet.id,
+                        name = pet.name,
+                        species = pet.species,
+                        breed = pet.breed,
+                        thumbSmallPath = thumb?.thumbSmallPath,
+                    )
+                }
+            }
+            combine(photoFlows) { PetListUiState.Success(it.toList()) }
         }
         .stateIn(
             scope = viewModelScope,

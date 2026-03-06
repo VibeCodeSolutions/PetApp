@@ -38,4 +38,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.crashlytics)
+    // WorkManager + Hilt-Worker-Integration (für HiltWorkerFactory in TierappApplication)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.compiler)
 }

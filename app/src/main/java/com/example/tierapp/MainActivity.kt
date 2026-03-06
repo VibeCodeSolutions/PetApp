@@ -36,6 +36,7 @@ import com.example.tierapp.feature.pets.PetEditRoute
 import com.example.tierapp.feature.pets.PetListRoute
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.Serializable
+import kotlin.reflect.KClass
 
 // ---- Navigations-Routen -------------------------------------------------
 
@@ -83,6 +84,13 @@ private val bottomNavItems = listOf(
     ),
 )
 
+private val topLevelRoutes: Set<KClass<*>> = setOf(
+    TiereRoute::class,
+    GesundheitRoute::class,
+    FamilieRoute::class,
+    EinstellungenRoute::class,
+)
+
 // ---- Activity -----------------------------------------------------------
 
 @AndroidEntryPoint
@@ -104,30 +112,36 @@ private fun TierappApp(modifier: Modifier = Modifier) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    val showBottomBar = currentDestination?.let { dest ->
+        topLevelRoutes.any { dest.hasRoute(it) }
+    } ?: false
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar {
-                bottomNavItems.forEach { item ->
-                    NavigationBarItem(
-                        selected = item.isSelected(currentDestination),
-                        onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (showBottomBar) {
+                NavigationBar {
+                    bottomNavItems.forEach { item ->
+                        NavigationBarItem(
+                            selected = item.isSelected(currentDestination),
+                            onClick = {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = stringResource(item.labelRes),
-                            )
-                        },
-                        label = { Text(text = stringResource(item.labelRes)) },
-                    )
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = item.icon,
+                                    contentDescription = stringResource(item.labelRes),
+                                )
+                            },
+                            label = { Text(text = stringResource(item.labelRes)) },
+                        )
+                    }
                 }
             }
         },

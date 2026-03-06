@@ -38,8 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-import com.example.tierapp.core.model.Pet
-import com.example.tierapp.core.model.PetSpecies
 
 // ---- Route-Entry-Point (wird vom NavHost aufgerufen) --------------------
 
@@ -129,7 +127,7 @@ private fun EmptyContent(modifier: Modifier = Modifier) {
 
 @Composable
 private fun PetList(
-    pets: List<Pet>,
+    pets: List<PetSummary>,
     onPetClick: (petId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -151,7 +149,7 @@ private fun PetList(
 
 @Composable
 private fun PetCard(
-    pet: Pet,
+    pet: PetSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -163,7 +161,7 @@ private fun PetCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PetAvatar(profilePhotoId = pet.profilePhotoId, petName = pet.name)
+            PetAvatar(thumbPath = pet.thumbSmallPath, petName = pet.name)
             Spacer(modifier = Modifier.width(12.dp))
             PetInfo(pet = pet)
         }
@@ -172,13 +170,13 @@ private fun PetCard(
 
 @Composable
 private fun PetAvatar(
-    profilePhotoId: String?,
+    thumbPath: String?,
     petName: String,
     modifier: Modifier = Modifier,
 ) {
     val placeholderPainter = rememberVectorPainter(Icons.Default.Pets)
     AsyncImage(
-        model = profilePhotoId,
+        model = thumbPath,
         contentDescription = petName,
         placeholder = placeholderPainter,
         error = placeholderPainter,
@@ -193,7 +191,7 @@ private fun PetAvatar(
 
 @Composable
 private fun PetInfo(
-    pet: Pet,
+    pet: PetSummary,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -214,18 +212,4 @@ private fun PetInfo(
             )
         }
     }
-}
-
-// ---- Erweiterungsfunktion -----------------------------------------------
-
-private fun PetSpecies.toDisplayName(): String = when (this) {
-    PetSpecies.DOG -> "Hund"
-    PetSpecies.CAT -> "Katze"
-    PetSpecies.BIRD -> "Vogel"
-    PetSpecies.RABBIT -> "Kaninchen"
-    PetSpecies.GUINEA_PIG -> "Meerschweinchen"
-    PetSpecies.HAMSTER -> "Hamster"
-    PetSpecies.FISH -> "Fisch"
-    PetSpecies.REPTILE -> "Reptil"
-    PetSpecies.OTHER -> "Sonstiges"
 }

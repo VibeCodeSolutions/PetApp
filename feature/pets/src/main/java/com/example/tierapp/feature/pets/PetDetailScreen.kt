@@ -34,10 +34,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,12 +57,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.tierapp.core.model.Pet
-import com.example.tierapp.core.model.PetSpecies
+import com.example.tierapp.core.ui.MediumDateFormatter
 import java.io.File
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
-private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 private const val FILE_PROVIDER_AUTHORITY = "com.example.tierapp.fileprovider"
 
 // ---- Route-Entry-Point --------------------------------------------------
@@ -71,8 +71,20 @@ fun PetDetailRoute(
     viewModel: PetDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.errorEvent.collect { error ->
+            when (error) {
+                PetDetailViewModel.PhotoError.GenerateFailed ->
+                    snackbarHostState.showSnackbar("Foto konnte nicht verarbeitet werden")
+            }
+        }
+    }
+
     PetDetailScreen(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onEditClick = onEditClick,
         onBackClick = onBackClick,
         onPhotoSelected = viewModel::onPhotoSelected,
@@ -85,6 +97,7 @@ fun PetDetailRoute(
 @Composable
 internal fun PetDetailScreen(
     uiState: PetDetailUiState,
+    snackbarHostState: SnackbarHostState,
     onEditClick: (petId: String) -> Unit,
     onBackClick: () -> Unit,
     onPhotoSelected: (Uri) -> Unit,
@@ -92,6 +105,7 @@ internal fun PetDetailScreen(
 ) {
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -158,7 +172,16 @@ private fun PetDetailContent(
         uri?.let { onPhotoSelected(it) }
     }
     val cameraLauncher = rememberLauncherForActivityResult(TakePicture()) { success ->
-        if (success) cameraImageUri?.let { onPhotoSelected(it) }
+        if (success) {
+            cameraImageUri?.let { onPhotoSelected(it) }
+        } else {
+            // Temp-Datei aufräumen, wenn Kamera abgebrochen wurde
+            cameraImageUri?.path?.let { path ->
+                val file = File(path)
+                if (file.exists()) file.delete()
+            }
+            cameraImageUri = null
+        }
     }
 
     Column(
@@ -168,7 +191,6 @@ private fun PetDetailContent(
             .padding(horizontal = 16.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Profilbild
         ProfilePhoto(
             photoPath = profilePhotoPath,
             petName = pet.name,
@@ -177,7 +199,6 @@ private fun PetDetailContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Tier-Informationen
         PetInfoSection(pet = pet)
     }
 
@@ -190,7 +211,7 @@ private fun PetDetailContent(
             onCameraClick = {
                 showPhotoDialog = false
                 val tempFile = File(
-                    context.filesDir,
+                    context.cacheDir,
                     "camera_${System.currentTimeMillis()}.jpg",
                 )
                 val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, tempFile)
@@ -248,7 +269,7 @@ private fun PetInfoSection(
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         InfoRow(label = "Tierart", value = pet.species.toDisplayName())
         pet.breed?.let { InfoRow(label = "Rasse", value = it) }
-        pet.birthDate?.let { InfoRow(label = "Geburtsdatum", value = it.format(DATE_FORMATTER)) }
+        pet.birthDate?.let { InfoRow(label = "Geburtsdatum", value = it.format(MediumDateFormatter)) }
         pet.chipNumber?.let { InfoRow(label = "Chip-Nummer", value = it) }
         pet.color?.let { InfoRow(label = "Farbe", value = it) }
         pet.weightKg?.let { InfoRow(label = "Gewicht", value = "${"%.2f".format(it)} kg") }
@@ -324,18 +345,4 @@ private fun PhotoSourceDialog(
             TextButton(onClick = onDismiss) { Text("Abbrechen") }
         },
     )
-}
-
-// ---- Erweiterungsfunktion -----------------------------------------------
-
-private fun PetSpecies.toDisplayName(): String = when (this) {
-    PetSpecies.DOG -> "Hund"
-    PetSpecies.CAT -> "Katze"
-    PetSpecies.BIRD -> "Vogel"
-    PetSpecies.RABBIT -> "Kaninchen"
-    PetSpecies.GUINEA_PIG -> "Meerschweinchen"
-    PetSpecies.HAMSTER -> "Hamster"
-    PetSpecies.FISH -> "Fisch"
-    PetSpecies.REPTILE -> "Reptil"
-    PetSpecies.OTHER -> "Sonstiges"
 }

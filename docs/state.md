@@ -139,26 +139,95 @@ Tiere erstellen, bearbeiten, anzeigen mit Profilbild.
 
 ## Phase 3: Gesundheitsmanagement
 
-**Status:** OFFEN
-**Beginn:** --
-**Abschluss:** --
+**Status:** ABGESCHLOSSEN
+**Beginn:** 2026-03-07
+**Abschluss:** 2026-03-07
 
 ### Ziel
 Impfungen, medizinische Akte und Medikamente verwalten mit Erinnerungen.
 
 ### Erwarteter Endzustand
-- [ ] Room Entities: Vaccination, MedicalRecord, Medication, Reminder + DAOs
-- [ ] Impf-Turnus-Berechnung (Standard-Intervalle, manuell anpassbar)
-- [ ] UI: Impf-Liste, Medizinische Akte, Medikamenten-Verwaltung
-- [ ] WorkManager-basierte Erinnerungen
-- [ ] 5 Notification Channels konfiguriert
-- [ ] Gesundheits-Dashboard (aggregierte Uebersicht)
+- [x] Room Entities: Vaccination, MedicalRecord, Medication, Reminder + DAOs
+- [x] Impf-Turnus-Berechnung (nextDueDate = dateAdministered + intervalMonths)
+- [x] UI: Impf-Liste, Medizinische Akte, Medikamenten-Verwaltung
+- [x] WorkManager-basierte Erinnerungen (DailyHealthCheckWorker, 24h periodic)
+- [x] 5 Notification Channels konfiguriert
+- [x] Gesundheits-Dashboard (aggregierte Uebersicht, Dringlichkeit-Sortierung)
 
-### Snapshot
-_Wird nach Abschluss der Phase ausgefuellt._
+### Snapshot Sprint 3.1 (2026-03-07)
+
+**Abgeschlossen:** Vaccination-Entity & UI
+
+- `Vaccination` Domain-Modell + `VaccinationRepository` Interface in `:core:model`
+- `VaccinationEntity` (FK auf pet, CASCADE, Index petId) + Mapper in `:core:database`
+- `VaccinationDao`: `getByPetId` (Flow), `getUpcoming` (Flow, cross-pet), `getUpcomingList` (suspend, fuer Worker), `insert`/`update`/`softDelete`
+- DB-Migration 3->4 (vaccination-Tabelle); `TierappDatabase` v4
+- `VaccinationRepositoryImpl` mit `Result<T>`-Wrapping via `runCatching`
+- `VaccinationRepositoryModule` Hilt-Binding
+- `DatabaseModule` um MIGRATION_3_4 + `provideVaccinationDao` erweitert
+- `VaccinationListUiState`, `VaccinationFormState` (immutable data classes)
+- `VaccinationListViewModel`: StateFlow, Turnus-Berechnung (`nextDueDate = date.plusMonths(intervalMonths)`), `submitVaccination`/`deleteVaccination`
+- `VaccinationListScreen`: `ModalBottomSheet` fuer Hinzufuegen, `LazyColumn` mit Key, Snackbar fuer Fehler
+- `VaccinationAddForm`: 6 Felder (Name, Datum, Turnus, Tierarzt, Charge, Notizen), Validierung, Live-Berechnung nextDueDate
+
+### Snapshot Sprint 3.2 (2026-03-07)
+
+**Abgeschlossen:** Medizinische Akte & Medikamente
+
+- `MedicalRecord` Domain-Modell + `MedicalRecordRepository` Interface in `:core:model`
+- `Medication` Domain-Modell + `MedicationRepository` Interface in `:core:model`
+- `Medication.daysRemaining` + `Medication.isLowStock` als berechnete Properties im Domain-Modell
+- `MedicalRecordEntity` (FK auf pet, CASCADE) + `MedicationEntity` (FK auf pet, CASCADE) + Mapper
+- `MedicalRecordDao`: getByPetId (Flow), getByPetIdAndType (Flow, String-Typ-Parameter), insert/update/softDelete
+- `MedicationDao`: getByPetId (Flow), getActiveMedications (Flow, todayEpochDay), getActiveList (suspend, fuer Worker), updateStock, softDelete
+- DB-Migration 4->5 (medical_record + medication Tabellen); `TierappDatabase` v5
+- `MedicalRecordRepositoryImpl` + `MedicationRepositoryImpl` + jeweilige Hilt-Module
+- `MedicalRecordListViewModel`: `flatMapLatest` auf `_activeFilter`-Flow fuer reaktives Typ-Filtering
+- `MedicalRecordListScreen`: FilterChip-Leiste (LazyRow, alle MedicalRecordType-Werte), ModalBottomSheet
+- `MedicalRecordAddForm`: ExposedDropdownMenuBox fuer Typ-Auswahl
+- `MedicationListViewModel`: `updateStock`-Flow mit separatem `StockUpdateState`
+- `MedicationListScreen`: Karten faerben sich rot bei isLowStock, Inventory-Icon fuer Vorrat-Update
+- `MedicationAddForm`: Vorschau der Reichweite (Tage) direkt im supportingText des Verbrauchs-Felds
+
+### Snapshot Sprint 3.3 (2026-03-07)
+
+**Abgeschlossen:** Erinnerungen & Notifications
+
+- `Reminder` Domain-Modell + `ReminderRepository` Interface in `:core:model`
+- `ReminderEntity` mit UNIQUE INDEX auf `(referenceId, triggerAt)` -- verhindert Doppeleintraege ohne explizite Pruefung
+- `ReminderDao`: `insertIfNotExists` (OnConflictStrategy.IGNORE nutzt Unique-Index), `getDueList` (suspend, fuer Worker), `getPendingReminders` (Flow, fuer Dashboard)
+- DB-Migration 5->6 (reminder-Tabelle + Unique-Index); `TierappDatabase` v6
+- `ReminderRepositoryImpl` + `ReminderRepositoryModule`
+- `core/notifications/build.gradle.kts`: WorkManager + hilt-work + hilt-compiler (KSP) + :core:database ergaenzt
+- `NotificationChannels`: 5 Channels (VACCINATION_REMINDERS HIGH, MEDICATION_REMINDERS HIGH, RESUPPLY_REMINDERS DEFAULT, FAMILY_UPDATES LOW, SYNC_STATUS MIN)
+- `DailyHealthCheckWorker` (`@HiltWorker`): scheduleVaccinationReminders (28/7/1 Tage vor nextDueDate), scheduleResupplyReminders (alle aktiven Medis mit isLowStock), postDueNotifications (postet + markiert als erledigt)
+- `NotificationScheduler`: `enqueueUniquePeriodicWork(KEEP, 24h, requiresBatteryNotLow)`
+- `TierappApplication`: implementiert `Configuration.Provider` fuer `HiltWorkerFactory`, ruft `NotificationChannels.createAll` + `NotificationScheduler.scheduleDailyHealthCheck` in `onCreate` auf
+
+### Snapshot Sprint 3.4 (2026-03-07)
+
+**Abgeschlossen:** Gesundheits-Dashboard & Navigation-Integration
+
+- `HealthDashboardUiState`: `UpcomingVaccinationItem` (mit `daysUntilDue`, `DashboardUrgency`), `lowStockMedications`, `pendingReminders`
+- `DashboardUrgency` Enum: CRITICAL (<= 1 Tag), WARNING (<= 7 Tage), INFO (<= 28 Tage)
+- `HealthDashboardViewModel`: `combine(vaccinationFlow, medicationFlow, reminderFlow)` -> single StateFlow; `markReminderCompleted`, `snoozeReminder` (1 Tag)
+- `HealthDashboardRoute`: `LazyColumn` mit 3 Sektionen, `UpcomingVaccinationCard` (Farbe nach Urgency), `LowStockCard`, `ReminderCard` mit Erledigt/Schlummern-Actions
+- `GesundheitRoute` in NavHost ersetzt Platzhalter durch `HealthDashboardRoute`
+- Neue Routen in `:app`: `ImpfungenRoute(petId)`, `MedizinAkteRoute(petId)`, `MedikamenteRoute(petId)`
+- `PetDetailRoute` um Health-Navigation-Callbacks erweitert (`onVaccinationsClick`, `onMedicalRecordsClick`, `onMedicationsClick`)
+- `HealthNavigationSection` in PetDetailContent: 3 `OutlinedCard`-Navigations-Buttons fuer Gesundheits-Unterbereiche
+- `app/build.gradle.kts`: `:feature:health`, `:core:notifications`, `work-runtime-ktx` ergaenzt
+
+### Architektonische Entscheidungen (Phase 3)
+- `ReminderEntity` Unique-Index statt manueller Exists-Pruefung: atomarer Upsert via `OnConflictStrategy.IGNORE` -- race-condition-sicher im Worker
+- DAO-Methoden fuer Worker als `suspend fun` (List-Return), fuer UI als Flow -- kein `.first()` im Worker noetig
+- `Medication.isLowStock` + `daysRemaining` im Domain-Modell (nicht im ViewModel) -- wiederverwendbar in Worker und Dashboard ohne Code-Duplizierung
+- `flatMapLatest` fuer reaktives Filter-Switching in `MedicalRecordListViewModel` -- alte Flow-Subscription wird automatisch gecancelt
+- `combine()` mit 3 Flows im Dashboard-ViewModel -- einzelne Neuberechnung bei jeder Quell-Emission, kein manuelles Orchestrieren
+- Worker greift direkt auf DAOs zu (nicht auf Repositories) -- vermeidet zusaetzliche Abstraktionsebene in Hintergrundprozessen
 
 ### Abhaengigkeiten
-- Phase 2 muss abgeschlossen sein (Pet-Entity)
+- Phase 2 muss abgeschlossen sein (Pet-Entity) ✅
 
 ---
 

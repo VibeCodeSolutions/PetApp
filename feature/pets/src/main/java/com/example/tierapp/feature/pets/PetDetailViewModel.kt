@@ -11,9 +11,13 @@ import com.example.tierapp.core.model.PetRepository
 import com.example.tierapp.core.model.SyncStatus
 import com.example.tierapp.core.model.UploadStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -28,7 +32,12 @@ class PetDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
+    enum class PhotoError { GenerateFailed }
+
     private val petId: String = checkNotNull(savedStateHandle["petId"])
+
+    private val _errorEvent = Channel<PhotoError>(Channel.BUFFERED)
+    val errorEvent: Flow<PhotoError> = _errorEvent.receiveAsFlow()
 
     val uiState: StateFlow<PetDetailUiState> = petRepository.getById(petId)
         .combine(petPhotoRepository.getByPetId(petId)) { pet, photos ->
@@ -47,9 +56,14 @@ class PetDetailViewModel @Inject constructor(
 
     fun onPhotoSelected(uri: Uri) {
         viewModelScope.launch {
-            val thumbs = thumbnailManager.generateThumbs(uri)
-            val photoId = UUID.randomUUID().toString()
+            // Pet vor dem blockierenden I/O lesen — verhindert Waisenfoto bei Race Condition
+            val current = petRepository.getById(petId).first() ?: return@launch
 
+            val thumbs = runCatching { thumbnailManager.generateThumbs(uri) }
+                .onFailure { _errorEvent.trySend(PhotoError.GenerateFailed) }
+                .getOrNull() ?: return@launch
+
+            val photoId = UUID.randomUUID().toString()
             petPhotoRepository.insert(
                 PetPhoto(
                     id = photoId,
@@ -63,8 +77,6 @@ class PetDetailViewModel @Inject constructor(
                     isDeleted = false,
                 )
             )
-
-            val current = (uiState.value as? PetDetailUiState.Success)?.pet ?: return@launch
             petRepository.update(
                 current.copy(
                     profilePhotoId = photoId,

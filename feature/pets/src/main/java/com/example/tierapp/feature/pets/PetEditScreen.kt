@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -44,13 +45,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tierapp.core.model.PetSpecies
+import com.example.tierapp.core.ui.MediumDateFormatter
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-
-private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
 // ---- Route-Entry-Point --------------------------------------------------
 
@@ -62,7 +60,7 @@ fun PetEditRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(uiState) {
+    LaunchedEffect(uiState is PetEditUiState.SavedSuccess) {
         if (uiState is PetEditUiState.SavedSuccess) onSaved()
     }
 
@@ -195,7 +193,7 @@ private fun PetEditForm(
 
         // Geburtsdatum
         OutlinedTextField(
-            value = state.birthDate?.format(DATE_FORMATTER) ?: "",
+            value = state.birthDate?.format(MediumDateFormatter) ?: "",
             onValueChange = {},
             label = { Text("Geburtsdatum") },
             readOnly = true,
@@ -257,7 +255,10 @@ private fun PetEditForm(
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (state.isSaving) {
-                CircularProgressIndicator(modifier = Modifier.height(20.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                )
             } else {
                 Text("Speichern")
             }
@@ -351,18 +352,4 @@ private fun BirthDatePickerDialog(
     ) {
         DatePicker(state = datePickerState)
     }
-}
-
-// ---- Erweiterungsfunktion -----------------------------------------------
-
-private fun PetSpecies.toDisplayName(): String = when (this) {
-    PetSpecies.DOG -> "Hund"
-    PetSpecies.CAT -> "Katze"
-    PetSpecies.BIRD -> "Vogel"
-    PetSpecies.RABBIT -> "Kaninchen"
-    PetSpecies.GUINEA_PIG -> "Meerschweinchen"
-    PetSpecies.HAMSTER -> "Hamster"
-    PetSpecies.FISH -> "Fisch"
-    PetSpecies.REPTILE -> "Reptil"
-    PetSpecies.OTHER -> "Sonstiges"
 }
