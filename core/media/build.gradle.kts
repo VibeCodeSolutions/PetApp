@@ -1,6 +1,5 @@
 plugins {
     id("tierapp.android.library")
-    id("tierapp.compose")
     id("tierapp.hilt")
 }
 
@@ -10,6 +9,4 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
-    implementation(libs.coil.compose)
-    implementation(libs.coil.network.okhttp)
 }

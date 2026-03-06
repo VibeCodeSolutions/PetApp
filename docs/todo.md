@@ -58,36 +58,42 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `:app` haengt auf `:core:database` (Hilt-Module-Discovery)
 - [ ] Verifizierung: `./gradlew :core:database:assembleDebug` erfolgreich
 
-### Sprint 2.2: Pet-Listen-UI
+### Sprint 2.2: Pet-Listen-UI ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** PetList-Screen mit ViewModel
 **Dateien:** `:feature:pets`
-- [ ] `PetListUiState` (Loading, Success, Empty)
-- [ ] `PetListViewModel` mit StateFlow
-- [ ] `PetListScreen` Composable (LazyColumn, Pet-Karten mit Placeholder-Bild)
-- [ ] Navigation-Integration in App NavHost
-- [ ] FAB zum Hinzufuegen
+- [x] `PetListUiState` (Loading, Success, Empty)
+- [x] `PetListViewModel` mit StateFlow (stateIn WhileSubscribed 5s)
+- [x] `PetListScreen` Composable (LazyColumn, PetCard mit Coil-Placeholder, key=pet.id)
+- [x] Navigation-Integration in App NavHost (TiereRoute)
+- [x] FAB zum Hinzufuegen
+- [x] Unit-Tests: 4 Tests (MainDispatcherRule, FakePetRepository)
 - [ ] Verifizierung: Liste zeigt Tiere aus DB an (ggf. mit Testdaten)
 
-### Sprint 2.3: Pet-Erstellen/Bearbeiten-UI
+### Sprint 2.3: Pet-Erstellen/Bearbeiten-UI ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Formular zum Anlegen und Bearbeiten von Tieren
 **Dateien:** `:feature:pets`
-- [ ] `PetEditViewModel` (Create + Edit Modus)
-- [ ] `PetEditScreen` Composable (Name, Geburtsdatum, Tierart, Rasse, Chip-Nr.)
-- [ ] Species-Auswahl mit Icons (Dropdown/Chip-Gruppe)
-- [ ] DatePicker fuer Geburtsdatum
-- [ ] Validierung (Name Pflicht, Chip-Nr. Format)
-- [ ] Navigation: PetList -> PetEdit, PetDetail -> PetEdit
+- [x] `PetEditUiState` (Loading, Editing, SavedSuccess)
+- [x] `PetEditViewModel` (Create + Edit Modus via SavedStateHandle["petId"])
+- [x] `PetEditScreen` Composable (Name, Geburtsdatum, Tierart, Rasse, Chip-Nr., Farbe, Gewicht, Notizen)
+- [x] Species-Auswahl (ExposedDropdownMenuBox)
+- [x] DatePicker via Material3 DatePickerDialog
+- [x] Validierung (Name Pflicht, Chip-Nr. 15 Ziffern)
+- [x] Navigation: TiereRoute -> TierBearbeitenRoute, TierDetailRoute -> TierBearbeitenRoute
+- [x] Unit-Tests: 7 Tests
 - [ ] Verifizierung: Tier anlegen, bearbeiten, in Liste sichtbar
 
-### Sprint 2.4: Pet-Detail & Profilbild
+### Sprint 2.4: Pet-Detail & Profilbild ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Detail-Ansicht + Bild-Aufnahme/Auswahl
-**Dateien:** `:feature:pets`, `:core:media`
-- [ ] `PetDetailScreen` Composable (alle Infos, grosses Profilbild)
-- [ ] `PetDetailViewModel`
-- [ ] Bild-Picker: Kamera (ActivityResultContracts.TakePicture) + Galerie (PickVisualMedia)
-- [ ] Thumbnail-Generierung in `:core:media` (150x150 + 400x400)
-- [ ] Coil-Integration: AsyncImage mit Placeholder (Tier-Silhouette je Species)
-- [ ] PetPhoto Room-Entity + DAO (fuer spaetere Galerie vorbereiten)
+**Dateien:** `:feature:pets`, `:core:media`, `:core:database`
+- [x] `PetDetailScreen` Composable (alle Infos, 160dp-Profilbild, InfoRow-Tabelle)
+- [x] `PetDetailViewModel` (combine petRepo + petPhotoRepo zu einem StateFlow)
+- [x] Bild-Picker: Kamera (TakePicture) + Galerie (PickVisualMedia) mit PhotoSourceDialog
+- [x] FileProvider konfiguriert (authority: com.example.tierapp.fileprovider)
+- [x] `ThumbnailManager` Interface + `ThumbnailManagerImpl` in `:core:media` (150x150 + 400x400, quadratischer Crop)
+- [x] Coil-Integration: AsyncImage mit rememberVectorPainter-Placeholder
+- [x] `PetPhotoEntity` + `PetPhotoDao` + `PetPhotoRepository` (Interface + Impl + HiltModule)
+- [x] DB-Migration 2->3 (pet_photo-Tabelle mit FK auf pet, CASCADE DELETE)
+- [x] Unit-Tests: 5 Tests (FakeThumbnailManager als object)
 - [ ] Verifizierung: Profilbild aufnehmen/auswaehlen, Thumbnail wird generiert, Bild wird angezeigt
 
 ---

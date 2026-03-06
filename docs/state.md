@@ -77,28 +77,63 @@ Architektonische Entscheidungen:
 
 ## Phase 2: Tierprofile
 
-**Status:** OFFEN
-**Beginn:** --
-**Abschluss:** --
+**Status:** ABGESCHLOSSEN
+**Beginn:** 2026-03-06
+**Abschluss:** 2026-03-07
 
 ### Ziel
 Tiere erstellen, bearbeiten, anzeigen mit Profilbild.
 
 ### Erwarteter Endzustand
-- [ ] Room Entities: Pet, PetPhoto + DAOs mit Flow-Queries
-- [ ] PetRepository (Interface + Impl)
-- [ ] PetListViewModel, PetDetailViewModel
-- [ ] UI: Tierliste (LazyColumn), Detail-Ansicht, Erstellungs-/Bearbeitungsformular
-- [ ] Species-Auswahl mit Icons
-- [ ] Profilbild-Aufnahme (Kamera + Galerie)
-- [ ] Thumbnail-Generierung (150x150 + 400x400) in :core:media
-- [ ] Coil-Integration fuer Bildanzeige
+- [x] Room Entities: Pet, PetPhoto + DAOs mit Flow-Queries
+- [x] PetRepository + PetPhotoRepository (Interface + Impl + HiltModule)
+- [x] PetListViewModel, PetDetailViewModel, PetEditViewModel
+- [x] UI: Tierliste (LazyColumn), Detail-Ansicht, Erstellungs-/Bearbeitungsformular
+- [x] Species-Auswahl (ExposedDropdownMenuBox)
+- [x] Profilbild-Aufnahme (Kamera + Galerie via ActivityResultContracts)
+- [x] Thumbnail-Generierung (150x150 + 400x400, quadr. Crop) in :core:media
+- [x] Coil-Integration fuer Bildanzeige (AsyncImage mit Vektor-Placeholder)
 
-### Snapshot
-_Wird nach Abschluss der Phase ausgefuellt._
+### Snapshot Phase 2 (2026-03-07)
+
+**Sprint 2.1** — Pet-Entity & Repository (2026-03-06)
+- `Pet` Domain-Modell, `PetRepository` Interface in `:core:model`
+- `PetEntity` + Mapper, `PetDao` (Flow-Queries, Soft-Delete), `PetRepositoryImpl`, `PetRepositoryModule`
+- DB-Migration 1->2 (pet-Tabelle)
+
+**Sprint 2.2** — Pet-Listen-UI (2026-03-07)
+- `PetListUiState` (sealed interface: Loading/Success/Empty)
+- `PetListViewModel`: `stateIn(WhileSubscribed(5_000))`, mappt Flow<List<Pet>> zu UiState
+- `PetListScreen`: `LazyColumn` mit `key={pet.id}`, `PetCard` mit Coil-`AsyncImage` + Vektor-Placeholder, FAB
+- `PetListRoute` als HiltViewModel-Entry-Point; Screen erhaelt nur UiState + Lambdas
+- 4 Unit-Tests, `MainDispatcherRule` (UnconfinedTestDispatcher), `FakePetRepository`
+
+**Sprint 2.3** — Pet-Erstellen/Bearbeiten-UI (2026-03-07)
+- `PetEditUiState` (sealed interface: Loading/Editing/SavedSuccess); `Editing` als data class mit Inline-Validierungsfehlern
+- `PetEditViewModel`: Dual-Mode via `savedStateHandle["petId"]` (null=create, non-null=edit); Validierung (Name Pflicht, Chip 15 Ziffern)
+- `PetEditScreen`: Material3-Formular, `ExposedDropdownMenuBox` fuer Species, `DatePickerDialog`
+- Navigation: `TierBearbeitenRoute(petId: String? = null)` in `:app`
+- 7 Unit-Tests (Create + Edit Modus, Validierungspfade)
+
+**Sprint 2.4** — Pet-Detail & Profilbild (2026-03-07)
+- `PetPhoto` Domain-Modell + `PetPhotoRepository` in `:core:model`
+- `PetPhotoEntity` (FK auf pet, CASCADE DELETE, Index petId), `PetPhotoDao`, `PetPhotoRepositoryImpl`, `PetPhotoRepositoryModule`
+- DB-Migration 2->3 (pet_photo-Tabelle); `TierappDatabase` v3
+- `ThumbnailManager` Interface + `ThumbnailManagerImpl` @Singleton in `:core:media`; quadratischer Center-Crop vor Skalierung; `MediaModule` Hilt-Binding
+- `PetDetailViewModel`: `combine(petRepo, petPhotoRepo)` -> single `StateFlow<PetDetailUiState>`; `onPhotoSelected(Uri)` generiert Thumbs, persistiert PetPhoto, aktualisiert pet.profilePhotoId
+- `PetDetailScreen`: 160dp-Profilbild (CircleShape), Kamera-Button overlay, `PhotoSourceDialog`, `InfoRow`-Tabelle
+- Foto-Picker: `PickVisualMedia` (Galerie) + `TakePicture` (Kamera) via `FileProvider` (authority: com.example.tierapp.fileprovider)
+- `file_provider_paths.xml` + CAMERA-Permission in AndroidManifest
+- 5 Unit-Tests; `FakeThumbnailManager` als `object` (Interface ermoeglicht testbare DI ohne Android-Context)
+
+### Architektonische Entscheidungen (Phase 2)
+- `ThumbnailManager` als Interface → saubere Testbarkeit ohne Robolectric
+- `PetEditViewModel.validate()` gibt Boolean zurueck und schreibt Fehler direkt in `_uiState` — kein separater Error-Channel
+- Camera-Temp-Datei in `context.filesDir` (interner Speicher) → kein External-Storage-Permission noetig
+- `PetSpecies.toDisplayName()` dreifach vorhanden (technische Schuld) → Konsolidierung geplant fuer Sprint 6.2
 
 ### Abhaengigkeiten
-- Phase 1 muss abgeschlossen sein
+- Phase 1 muss abgeschlossen sein ✅
 
 ---
 

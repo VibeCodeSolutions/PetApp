@@ -31,13 +31,23 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.tierapp.core.ui.theme.TierappTheme
+import com.example.tierapp.feature.pets.PetDetailRoute
+import com.example.tierapp.feature.pets.PetEditRoute
+import com.example.tierapp.feature.pets.PetListRoute
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.Serializable
+
+// ---- Navigations-Routen -------------------------------------------------
 
 @Serializable data object TiereRoute
 @Serializable data object GesundheitRoute
 @Serializable data object FamilieRoute
 @Serializable data object EinstellungenRoute
+
+@Serializable data class TierDetailRoute(val petId: String)
+@Serializable data class TierBearbeitenRoute(val petId: String? = null)
+
+// ---- Bottom-Nav ---------------------------------------------------------
 
 private data class BottomNavItem(
     val route: Any,
@@ -72,6 +82,8 @@ private val bottomNavItems = listOf(
         isSelected = { it?.hasRoute<EinstellungenRoute>() == true },
     ),
 )
+
+// ---- Activity -----------------------------------------------------------
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -125,7 +137,24 @@ private fun TierappApp(modifier: Modifier = Modifier) {
             startDestination = TiereRoute,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable<TiereRoute> { TierePlaceholderScreen() }
+            composable<TiereRoute> {
+                PetListRoute(
+                    onAddPetClick = { navController.navigate(TierBearbeitenRoute()) },
+                    onPetClick = { petId -> navController.navigate(TierDetailRoute(petId)) },
+                )
+            }
+            composable<TierDetailRoute> {
+                PetDetailRoute(
+                    onEditClick = { petId -> navController.navigate(TierBearbeitenRoute(petId)) },
+                    onBackClick = { navController.popBackStack() },
+                )
+            }
+            composable<TierBearbeitenRoute> {
+                PetEditRoute(
+                    onSaved = { navController.popBackStack() },
+                    onBackClick = { navController.popBackStack() },
+                )
+            }
             composable<GesundheitRoute> { GesundheitPlaceholderScreen() }
             composable<FamilieRoute> { FamiliePlaceholderScreen() }
             composable<EinstellungenRoute> { EinstellungenPlaceholderScreen() }
@@ -133,12 +162,7 @@ private fun TierappApp(modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-private fun TierePlaceholderScreen(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = stringResource(R.string.nav_tiere))
-    }
-}
+// ---- Platzhalter-Screens ------------------------------------------------
 
 @Composable
 private fun GesundheitPlaceholderScreen(modifier: Modifier = Modifier) {

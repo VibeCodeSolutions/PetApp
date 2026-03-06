@@ -28,6 +28,8 @@ android {
 dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:database"))
+    implementation(project(":feature:pets"))
+    implementation(project(":core:media"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
