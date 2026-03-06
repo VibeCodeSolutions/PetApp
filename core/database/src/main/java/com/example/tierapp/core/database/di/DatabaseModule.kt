@@ -3,6 +3,8 @@ package com.example.tierapp.core.database.di
 import android.content.Context
 import androidx.room.Room
 import com.example.tierapp.core.database.TierappDatabase
+import com.example.tierapp.core.database.dao.PetDao
+import com.example.tierapp.core.database.migration.MIGRATION_1_2
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,5 +24,10 @@ object DatabaseModule {
         context,
         TierappDatabase::class.java,
         "tierapp.db",
-    ).build()
+    )
+        .addMigrations(MIGRATION_1_2)
+        .build()
+
+    @Provides
+    fun providePetDao(db: TierappDatabase): PetDao = db.petDao()
 }

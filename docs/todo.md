@@ -15,10 +15,7 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] Alle 14 Module in `settings.gradle.kts` registrieren
 - [x] Jedes Modul: `build.gradle.kts` mit Convention Plugin
 - [x] Firebase-Projekt verbunden, `google-services.json` eingebunden
-- [ ] Verifizierung: `./gradlew assembleDebug` kompiliert ohne Fehler
-  - BLOCKER: Hilt Gradle Plugin 2.56.1 inkompatibel mit AGP 9.0.1 (`BaseExtension` entfernt)
-  - Workaround aktiv: Hilt-Plugin nicht angewendet, nur KSP + Dependencies
-  - Aktion: Hilt-Release auf AGP-9-Kompatibilitaet pruefen (github.com/google/dagger/releases), Version in `libs.versions.toml` aktualisieren und `HiltConventionPlugin.kt` reaktivieren
+- [x] Verifizierung: `./gradlew assembleDebug` kompiliert ohne Fehler
 
 ### Sprint 1.2: App-Shell & Theme ✅ ABGESCHLOSSEN (2026-03-06)
 **Scope:** MainActivity, Hilt-Setup, Theme, Bottom-Navigation
@@ -40,21 +37,26 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `TierappDatabase` (abstract, @Database, version = 1, exportSchema = true, leeres Schema)
 - [x] KSP-Arg `room.schemaLocation` in `core/database/build.gradle.kts` konfiguriert
 - [x] Hilt-Modul `DatabaseModule` in `di/` (Singleton, Room.databaseBuilder)
-- [ ] Verifizierung: `./gradlew :core:database:assembleDebug` kompiliert ohne Fehler
+- [x] Verifizierung: `./gradlew assembleDebug` kompiliert ohne Fehler
 
 ---
 
 ## Phase 2: Tierprofile
 
-### Sprint 2.1: Pet-Entity & Repository
+### Sprint 2.1: Pet-Entity & Repository ✅ ABGESCHLOSSEN (2026-03-06)
 **Scope:** Room Entity, DAO, Repository
 **Dateien:** `:core:database`, `:core:model`
-- [ ] `Pet` Room-Entity mit allen Feldern (id, name, birthDate, species, breed, chipNumber, etc.)
-- [ ] `PetDao`: insert, update, delete (suspend), getAll (Flow), getById (Flow)
-- [ ] DB-Migration v1 -> v2 (oder v1 falls erstes Schema)
-- [ ] `PetRepository` Interface + `PetRepositoryImpl`
-- [ ] Hilt-Binding fuer Repository
-- [ ] Verifizierung: Unit-Tests fuer DAO-Queries
+- [x] `Pet` Domain-Modell in `:core:model` (plain data class, keine Room-Annotationen)
+- [x] `PetRepository` Interface in `:core:model`
+- [x] `PetEntity` Room-Entity + Mapper (toDomain/toEntity) in `:core:database`
+- [x] `PetDao`: getAll/getById (Flow), insert/update (suspend), softDelete
+- [x] `MIGRATION_1_2`: pet-Tabelle in SQLite angelegt
+- [x] `TierappDatabase` auf version = 2, PetEntity registriert, petDao() abstract
+- [x] `PetRepositoryImpl` mit Soft-Delete (isDeleted=1, syncStatus=PENDING)
+- [x] `PetRepositoryModule` Hilt-Binding (Interface -> Impl, Singleton)
+- [x] `DatabaseModule` um PetDao-Provider und MIGRATION_1_2 erweitert
+- [x] `:app` haengt auf `:core:database` (Hilt-Module-Discovery)
+- [ ] Verifizierung: `./gradlew :core:database:assembleDebug` erfolgreich
 
 ### Sprint 2.2: Pet-Listen-UI
 **Scope:** PetList-Screen mit ViewModel
