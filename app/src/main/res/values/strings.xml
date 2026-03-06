@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Tierapp</string>
+    <string name="nav_tiere">Tiere</string>
+    <string name="nav_gesundheit">Gesundheit</string>
+    <string name="nav_familie">Familie</string>
+    <string name="nav_einstellungen">Einstellungen</string>
+</resources>

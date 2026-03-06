@@ -1,0 +1,162 @@
+package com.example.tierapp
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.tierapp.core.ui.theme.TierappTheme
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.serialization.Serializable
+
+@Serializable data object TiereRoute
+@Serializable data object GesundheitRoute
+@Serializable data object FamilieRoute
+@Serializable data object EinstellungenRoute
+
+private data class BottomNavItem(
+    val route: Any,
+    val labelRes: Int,
+    val icon: ImageVector,
+    val isSelected: (NavDestination?) -> Boolean,
+)
+
+private val bottomNavItems = listOf(
+    BottomNavItem(
+        route = TiereRoute,
+        labelRes = R.string.nav_tiere,
+        icon = Icons.Default.Pets,
+        isSelected = { it?.hasRoute<TiereRoute>() == true },
+    ),
+    BottomNavItem(
+        route = GesundheitRoute,
+        labelRes = R.string.nav_gesundheit,
+        icon = Icons.Default.HealthAndSafety,
+        isSelected = { it?.hasRoute<GesundheitRoute>() == true },
+    ),
+    BottomNavItem(
+        route = FamilieRoute,
+        labelRes = R.string.nav_familie,
+        icon = Icons.Default.Group,
+        isSelected = { it?.hasRoute<FamilieRoute>() == true },
+    ),
+    BottomNavItem(
+        route = EinstellungenRoute,
+        labelRes = R.string.nav_einstellungen,
+        icon = Icons.Default.Settings,
+        isSelected = { it?.hasRoute<EinstellungenRoute>() == true },
+    ),
+)
+
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            TierappTheme {
+                TierappApp()
+            }
+        }
+    }
+}
+
+@Composable
+private fun TierappApp(modifier: Modifier = Modifier) {
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        bottomBar = {
+            NavigationBar {
+                bottomNavItems.forEach { item ->
+                    NavigationBarItem(
+                        selected = item.isSelected(currentDestination),
+                        onClick = {
+                            navController.navigate(item.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = stringResource(item.labelRes),
+                            )
+                        },
+                        label = { Text(text = stringResource(item.labelRes)) },
+                    )
+                }
+            }
+        },
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = TiereRoute,
+            modifier = Modifier.padding(innerPadding),
+        ) {
+            composable<TiereRoute> { TierePlaceholderScreen() }
+            composable<GesundheitRoute> { GesundheitPlaceholderScreen() }
+            composable<FamilieRoute> { FamiliePlaceholderScreen() }
+            composable<EinstellungenRoute> { EinstellungenPlaceholderScreen() }
+        }
+    }
+}
+
+@Composable
+private fun TierePlaceholderScreen(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text = stringResource(R.string.nav_tiere))
+    }
+}
+
+@Composable
+private fun GesundheitPlaceholderScreen(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text = stringResource(R.string.nav_gesundheit))
+    }
+}
+
+@Composable
+private fun FamiliePlaceholderScreen(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text = stringResource(R.string.nav_familie))
+    }
+}
+
+@Composable
+private fun EinstellungenPlaceholderScreen(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text = stringResource(R.string.nav_einstellungen))
+    }
+}
