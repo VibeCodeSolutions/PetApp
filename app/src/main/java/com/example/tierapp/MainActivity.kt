@@ -30,6 +30,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.tierapp.auth.LoginRoute
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tierapp.core.ui.theme.TierappTheme
 import com.example.tierapp.feature.gallery.GalleryRoute
 import com.example.tierapp.feature.pets.PetDetailRoute
@@ -41,6 +43,7 @@ import kotlin.reflect.KClass
 
 // ---- Navigations-Routen -------------------------------------------------
 
+@Serializable data object LoginScreenRoute
 @Serializable data object TiereRoute
 @Serializable data object GesundheitRoute
 @Serializable data object FamilieRoute
@@ -109,10 +112,21 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun TierappApp(modifier: Modifier = Modifier) {
+private fun TierappApp(
+    modifier: Modifier = Modifier,
+    authViewModel: com.example.tierapp.auth.LoginViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Auth-Gate: Start auf LoginScreen wenn nicht authentifiziert
+    val startDestination: Any = if (authState is com.example.tierapp.auth.LoginUiState.Authenticated) {
+        TiereRoute
+    } else {
+        LoginScreenRoute
+    }
 
     val showBottomBar = currentDestination?.let { dest ->
         topLevelRoutes.any { dest.hasRoute(it) }
@@ -150,9 +164,18 @@ private fun TierappApp(modifier: Modifier = Modifier) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = TiereRoute,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding),
         ) {
+            composable<LoginScreenRoute> {
+                LoginRoute(
+                    onAuthenticated = {
+                        navController.navigate(TiereRoute) {
+                            popUpTo<LoginScreenRoute> { inclusive = true }
+                        }
+                    },
+                )
+            }
             composable<TiereRoute> {
                 PetListRoute(
                     onAddPetClick = { navController.navigate(TierBearbeitenRoute()) },

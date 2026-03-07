@@ -4,4 +4,16 @@
     <string name="nav_gesundheit">Gesundheit</string>
     <string name="nav_familie">Familie</string>
     <string name="nav_einstellungen">Einstellungen</string>
+
+    <!-- Auth / Login -->
+    <string name="login_title">Tierapp</string>
+    <string name="login_subtitle">Verwalte deine Tiere gemeinsam mit der Familie</string>
+    <string name="login_google">Mit Google anmelden</string>
+
+    <!--
+        SETUP REQUIRED: Ersetze diesen Platzhalter mit der Web-Client-ID aus der
+        Google Cloud Console (APIs & Services > Credentials > OAuth 2.0-Client-IDs).
+        Die richtige ID steht auch in google-services.json unter "oauth_client[type=3].client_id".
+    -->
+    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
 </resources>

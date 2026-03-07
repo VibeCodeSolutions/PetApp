@@ -233,9 +233,9 @@ Impfungen, medizinische Akte und Medikamente verwalten mit Erinnerungen.
 
 ## Phase 4: Medienverwaltung
 
-**Status:** IN BEARBEITUNG (Sprint 4.1 abgeschlossen)
+**Status:** ABGESCHLOSSEN
 **Beginn:** 2026-03-07
-**Abschluss:** --
+**Abschluss:** 2026-03-07
 
 ### Ziel
 Foto-Galerie pro Tier mit effizienter Bildverwaltung.
@@ -280,16 +280,17 @@ Foto-Galerie pro Tier mit effizienter Bildverwaltung.
 
 ## Phase 5: Multi-Device & Cloud-Sync
 
-**Status:** OFFEN
-**Beginn:** --
+**Status:** IN BEARBEITUNG (Sprint 5.1 abgeschlossen)
+**Beginn:** 2026-03-07
 **Abschluss:** --
 
 ### Ziel
 Familien-Konten und Offline-First Cloud-Synchronisation.
 
 ### Erwarteter Endzustand
-- [ ] Firebase-Projekt konfiguriert (Auth, Firestore, Storage, FCM)
-- [ ] Auth: Google, Facebook, Microsoft Sign-In funktional
+- [x] Firebase-Projekt konfiguriert (Auth, Firestore, Storage, FCM)
+- [x] Auth: Google Sign-In funktional
+- [ ] Auth: Facebook, Microsoft Sign-In (vorlaeufig ausgeklammert, nur Google aktiv)
 - [ ] Familie erstellen, Mitglieder einladen (via Link/Code)
 - [ ] Firestore Security Rules (nur Familienmitglieder)
 - [ ] SyncWorker: Push (PENDING -> Firestore) + Pull (Firestore -> Room)
@@ -297,11 +298,47 @@ Familien-Konten und Offline-First Cloud-Synchronisation.
 - [ ] PhotoUploadWorker: Bilder -> Firebase Storage
 - [ ] ReminderRefreshWorker: Erinnerungen nach Sync aktualisieren
 
-### Snapshot
-_Wird nach Abschluss der Phase ausgefuellt._
+### Snapshot Sprint 5.1 (2026-03-07)
+
+**Abgeschlossen:** Firebase Auth -- Google (Facebook + Microsoft vorlaeufig ausgeklammert)
+
+**Neue Dateien:**
+- `core/model/.../TierResult.kt` -- sealed interface `TierResult<T>` (Success/Error) mit `onSuccess`/`onError` Extension-Funktionen; universeller Result-Wrapper fuer alle Repository-Operationen
+- `core/model/.../AuthUser.kt` -- Domain-Entity (uid, email, displayName, photoUrl); Firebase-unabhaengig
+- `core/network/.../auth/AuthRepository.kt` -- oeffentliches Interface; `authState: Flow<AuthUser?>`, `signInWithGoogle`, `signOut`, `currentUser()`
+- `core/network/.../auth/datasource/AuthDataSource.kt` -- internes Interface; kapselt Firebase-Aufrufe; gibt bereits `AuthUser` zurueck (kein `FirebaseUser` ausserhalb dieser Schicht)
+- `core/network/.../auth/datasource/FirebaseAuthDataSource.kt` -- `callbackFlow` fuer `authState`, `Task<T>.await()` via `kotlinx-coroutines-play-services`
+- `core/network/.../auth/FirebaseAuthRepository.kt` -- `runCatching + fold -> TierResult`; `Dispatchers.IO` fuer credential-Calls
+- `core/network/.../auth/di/AuthModule.kt` -- Hilt `@Binds @Singleton` (beide internal) fuer `AuthDataSource` + `AuthRepository`; `@Provides` fuer `FirebaseAuth.getInstance()`
+- `core/network/.../auth/FirebaseAuthRepositoryTest.kt` -- 9 Unit-Tests; `FakeAuthDataSource` (kein mockk); prueft authState-Emission, currentUser, signIn-Erfolg/Fehler, signOut-Erfolg/Fehler
+- `app/.../auth/LoginUiState.kt` -- `sealed interface`: Unauthenticated / Loading / Authenticated(user) / Error(message)
+- `app/.../auth/LoginViewModel.kt` -- `@HiltViewModel`; `init`-Block beobachtet `authState`-Flow reaktiv; `initiateGoogleSignIn(context, webClientId)` startet Credential Manager in `viewModelScope`; `signOut`, `clearError`, `handleError`
+- `app/.../auth/LoginScreen.kt` -- 1 Google-Button; `CircularProgressIndicator` bei Loading; `SnackbarHost` fuer Fehler; `LoginRoute` als Composable-Entry-Point mit `hiltViewModel()`
+- `app/src/test/.../auth/MainDispatcherRule.kt`
+- `app/src/test/.../auth/LoginViewModelTest.kt` -- 8 Unit-Tests; `FakeAuthRepository`; prueft Initialzustand, reaktive Auth-State-Updates, signIn-/signOut-Zustandsuebergaenge inkl. Loading-Durchlauf, clearError
+
+**Geaenderte Dateien:**
+- `gradle/libs.versions.toml` -- credentials:1.5.0, googleid:1.1.1 + korrespondierende Libraries + `kotlinx-coroutines-play-services`
+- `core/network/build.gradle.kts` -- +firebase-auth-ktx, +kotlinx-coroutines-play-services, +testImplementation junit4/coroutines-test
+- `app/build.gradle.kts` -- +core:network, +credentials, +credentials-play-services-auth, +googleid, +testImplementation
+- `app/.../MainActivity.kt` -- `LoginScreenRoute` als `@Serializable data object`; Auth-Gate: `startDestination` dynamisch (LoginScreenRoute vs. TiereRoute); `authViewModel.uiState` via `collectAsStateWithLifecycle()`; `composable<LoginScreenRoute>` mit `popUpTo(inclusive=true)` nach Login
+- `app/.../res/values/strings.xml` -- 3 neue Auth-Strings (login_title, login_subtitle, login_google, default_web_client_id)
+
+**Architektonische Entscheidungen:**
+- `AuthDataSource` gibt `AuthUser` zurueck (nicht `FirebaseUser`) -- `FirebaseUser` ist `final`, kann nicht subclassed werden; Domain-Typen verlassen die DataSource nie als Firebase-Typen; `FakeAuthDataSource` ohne mockk testbar
+- `initiateGoogleSignIn(context)` im ViewModel (nicht in Composable-Scope) -- Credential Manager in `viewModelScope`; Activity-Wechsel cancelt den Job korrekt; Context als Parameter (nicht gespeichert) = kein Memory Leak
+- `runCatching { ... }.fold(onSuccess, onFailure)` statt try/catch -- einheitliches Error-Handling, kein Exception-Propagation aus Repositories
+- `FirebaseAuthRepository` + `AuthModule.bindAuthRepository` als `internal` -- verhindert Visibility-Konflikt (public Klasse mit internal Parameter)
+
+**Scope-Entscheidung:**
+- Facebook- und Microsoft-Auth vorlaeufig ausgeklammert (2026-03-07): Nur Google Sign-In aktiv. Facebook-SDK-Abhaengigkeit entfernt. Interface, Repository, DataSource, ViewModel und Tests auf Google-only reduziert. Koennen bei Bedarf wiedereingebaut werden.
+
+**Offene Setup-Schritte (manuell):**
+- `strings.xml`: `default_web_client_id` mit echter OAuth-Client-ID ersetzen (aus `google-services.json > oauth_client[type=3].client_id`)
+- Firebase Console: SHA-1-Fingerprint fuer Credential Manager hinterlegen (Google Sign-In aktivieren)
 
 ### Abhaengigkeiten
-- Phasen 1-4 muessen abgeschlossen sein
+- Phasen 1-4 muessen abgeschlossen sein ✅
 
 ---
 

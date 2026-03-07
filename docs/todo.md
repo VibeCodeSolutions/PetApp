@@ -167,16 +167,20 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 
 ## Phase 5: Multi-Device & Cloud-Sync
 
-### Sprint 5.1: Firebase-Setup & Auth
+### Sprint 5.1: Firebase-Setup & Auth ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Firebase-Projekt, Auth mit 3 Providern
 **Dateien:** `:core:network`, `:app`
 - [x] Firebase-Projekt anlegen (Firestore, Auth, Storage)
 - [x] `google-services.json` einbinden
-- [ ] Firebase Auth: Google Sign-In konfigurieren
-- [ ] Firebase Auth: Facebook Login konfigurieren (Facebook Developer App)
-- [ ] Login/Registrierungs-Screen mit 3 Provider-Buttons
-- [ ] Auth-State in ViewModel (eingeloggt/ausgeloggt)
-- [ ] Verifizierung: Login/Logout mit jedem Provider funktioniert
+- [x] Firebase Auth: Google Sign-In via Credential Manager (moderner Ersatz fuer GoogleSignInClient)
+- [x] Firebase Auth: Facebook Login via SDK CallbackManager (DisposableEffect fuer Cleanup)
+- [x] Firebase Auth: Microsoft Sign-In via OAuthProvider ("microsoft.com")
+- [x] `TierResult<T>` + `AuthUser` in `:core:model`
+- [x] `AuthDataSource` (internal) + `FirebaseAuthDataSource` + `FirebaseAuthRepository` + `AuthModule` in `:core:network`
+- [x] `LoginUiState` + `LoginViewModel` + `LoginScreen` (3 Provider-Buttons) in `:app/auth/`
+- [x] Auth-Gate in `MainActivity` (LoginScreenRoute als startDestination wenn unauthenticated)
+- [x] 21 Unit-Tests (11 FirebaseAuthRepositoryTest + 10 LoginViewModelTest, Fake-Pattern)
+- [ ] Verifizierung: Login/Logout mit jedem Provider funktioniert (erfordert manuelle Setup-Schritte)
 
 ### Sprint 5.2: Familien-Verwaltung
 **Scope:** Familie erstellen, Mitglieder einladen

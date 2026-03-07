@@ -28,6 +28,7 @@ android {
 dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:database"))
+    implementation(project(":core:network"))
     implementation(project(":feature:pets"))
     implementation(project(":feature:gallery"))
     implementation(libs.coil.compose)
@@ -40,8 +41,17 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.crashlytics)
+
+    // Google Sign-In via Credential Manager (ersetzt GoogleSignInClient)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+
     // WorkManager + Hilt-Worker-Integration (für HiltWorkerFactory in TierappApplication)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
     ksp(libs.hilt.compiler)
+
+    testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
