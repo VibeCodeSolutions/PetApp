@@ -9,6 +9,8 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
+import com.example.tierapp.core.sync.RealtimeSyncObserver
+import com.example.tierapp.core.sync.SyncScheduler
 import dagger.hilt.android.HiltAndroidApp
 import okio.Path.Companion.toOkioPath
 import javax.inject.Inject
@@ -17,6 +19,14 @@ import javax.inject.Inject
 class TierappApplication : Application(), Configuration.Provider, SingletonImageLoader.Factory {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var syncScheduler: SyncScheduler
+    @Inject lateinit var realtimeSyncObserver: RealtimeSyncObserver
+
+    override fun onCreate() {
+        super.onCreate()
+        syncScheduler.schedulePeriodicSync()
+        realtimeSyncObserver.register()
+    }
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()

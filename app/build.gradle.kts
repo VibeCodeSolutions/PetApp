@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:database"))
     implementation(project(":core:network"))
+    implementation(project(":core:sync"))
     implementation(project(":feature:pets"))
     implementation(project(":feature:gallery"))
     implementation(libs.coil.compose)

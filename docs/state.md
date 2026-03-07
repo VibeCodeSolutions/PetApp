@@ -218,6 +218,10 @@ Impfungen, medizinische Akte und Medikamente verwalten mit Erinnerungen.
 - `HealthNavigationSection` in PetDetailContent: 3 `OutlinedCard`-Navigations-Buttons fuer Gesundheits-Unterbereiche
 - `app/build.gradle.kts`: `:feature:health`, `:core:notifications`, `work-runtime-ktx` ergaenzt
 
+### HINWEIS: DB-Diskrepanz (Stand 2026-03-07)
+
+Die in Sprints 3.1-3.3 beschriebenen Room-Migrations (3->4 Vaccination, 4->5 MedicalRecord+Medication, 5->6 Reminder) wurden in `TierappDatabase` **nicht registriert**. Die tatsaechliche DB hat Vaccination/MedicalRecord/Medication/Reminder-Entities und DAOs als Kotlin-Dateien, aber sie fehlen im `@Database(entities=[...])` und in `DatabaseModule`. Die tatsaechliche DB-Version war 4 (pet + pet_photo) und ist nach Sprint 5.2 jetzt 5 (pet + pet_photo + family + family_member). Die Health-Entities muessen in einem separaten Sprint nachregistriert werden (Sprint 3.3-Nacharbeit, erfordert MIGRATION_5_6).
+
 ### Architektonische Entscheidungen (Phase 3)
 - `ReminderEntity` Unique-Index statt manueller Exists-Pruefung: atomarer Upsert via `OnConflictStrategy.IGNORE` -- race-condition-sicher im Worker
 - DAO-Methoden fuer Worker als `suspend fun` (List-Return), fuer UI als Flow -- kein `.first()` im Worker noetig
@@ -280,7 +284,7 @@ Foto-Galerie pro Tier mit effizienter Bildverwaltung.
 
 ## Phase 5: Multi-Device & Cloud-Sync
 
-**Status:** IN BEARBEITUNG (Sprint 5.1 abgeschlossen)
+**Status:** IN BEARBEITUNG (Sprints 5.1 – 5.4 abgeschlossen; 5.5 Integration offen)
 **Beginn:** 2026-03-07
 **Abschluss:** --
 
@@ -291,12 +295,13 @@ Familien-Konten und Offline-First Cloud-Synchronisation.
 - [x] Firebase-Projekt konfiguriert (Auth, Firestore, Storage, FCM)
 - [x] Auth: Google Sign-In funktional
 - [ ] Auth: Facebook, Microsoft Sign-In (vorlaeufig ausgeklammert, nur Google aktiv)
-- [ ] Familie erstellen, Mitglieder einladen (via Link/Code)
-- [ ] Firestore Security Rules (nur Familienmitglieder)
-- [ ] SyncWorker: Push (PENDING -> Firestore) + Pull (Firestore -> Room)
-- [ ] Konfliktaufloesung: Last-Write-Wins + feldbasiertes Merging
-- [ ] PhotoUploadWorker: Bilder -> Firebase Storage
-- [ ] ReminderRefreshWorker: Erinnerungen nach Sync aktualisieren
+- [x] Familie erstellen, Mitglieder einladen (8-stelliger Invite-Code)
+- [x] Firestore Security Rules (nur Familienmitglieder)
+- [x] SyncWorker: Push (PENDING -> Firestore) + Pull (Firestore -> Room)
+- [x] Konfliktaufloesung: Last-Write-Wins + feldbasiertes Merging
+- [x] PhotoUploadWorker: Bilder -> Firebase Storage
+- [ ] ReminderRefreshWorker: Erinnerungen nach Sync aktualisieren (blockiert: Health-Entities fehlen in DB)
+- [ ] FamilyScreen in NavHost eingehaengt (Sprint 5.5)
 
 ### Snapshot Sprint 5.1 (2026-03-07)
 
@@ -336,6 +341,75 @@ Familien-Konten und Offline-First Cloud-Synchronisation.
 **Offene Setup-Schritte (manuell):**
 - `strings.xml`: `default_web_client_id` mit echter OAuth-Client-ID ersetzen (aus `google-services.json > oauth_client[type=3].client_id`)
 - Firebase Console: SHA-1-Fingerprint fuer Credential Manager hinterlegen (Google Sign-In aktivieren)
+
+### Snapshot Sprint 5.3 + 5.4 + Integration (2026-03-07)
+
+**Abgeschlossen:** Sync-Engine, Bild-Sync, Lifecycle-Wiring
+
+**Neue Dateien (Auswahl):**
+- `core/sync/`: `SyncEngine`, `SyncResolver`, `SyncWorker`, `PhotoUploadEngine`, `PhotoUploadWorker`, `SyncScheduler`, `SyncPreferences`, `SharedPrefsSyncPreferences`, `RealtimeSyncObserver`, `ApplicationScope`, `di/SyncModule`
+- `core/network/firestore/FirestorePetDataSource`: +`observePets` / `observePhotos` (callbackFlow + awaitClose)
+
+**Geaenderte Dateien:**
+- `TierappApplication`: schedulePeriodicSync() + realtimeSyncObserver.register() in onCreate()
+- `:app/build.gradle.kts`: +implementation(project(":core:sync"))
+- `values/themes.xml`: MaterialComponents -> android:Theme.Material.Light.NoTitleBar (Plattform, kein Dep)
+
+**Architektonische Entscheidungen:**
+- Pull-first in `SyncEngine.sync()`: Remote-Aenderungen werden vor Push geprueft, um Konflikt-Resolver korrekt zu triggern
+- `SyncResolver`-Entscheidungen: UseRemote, UseLocal, DeleteLocal, DeleteRemote, Skip -- explizit ohne if/else-Kaskaden
+- `RealtimeSyncObserver` als `DefaultLifecycleObserver` auf `ProcessLifecycleOwner` -- kein GlobalScope; ON_STOP cancelt Firestore-Listener via awaitClose automatisch
+- `observePhotos`: collectionGroup + client-seitiger familyId-Filter (MVP-Kompromiss, bis ~100 Fotos vertretbar)
+- `@ApplicationScope CoroutineScope`: SupervisorJob + Dispatchers.Default; ueberlebt Activity-Rotationen
+
+**Tests:** 12 SyncResolverTest + 9 SyncEngineTest + 7 PhotoUploadEngineTest + 5 RealtimeSyncObserverTest = 33
+
+**Offener Punkt nach diesen Sprints:**
+- familyId-Fallback (`AuthUser.uid`) in SyncWorker / PhotoUploadWorker / RealtimeSyncObserver bis Sprint 5.2 beseitigt
+
+---
+
+### Snapshot Sprint 5.2 (2026-03-07)
+
+**Abgeschlossen:** Familie-Verwaltung + familyId-Fallback beseitigt
+
+**Neue Dateien (Auswahl):**
+
+| Modul | Datei |
+|---|---|
+| `:core:model` | `Family.kt`, `FamilyMember.kt`, `FamilyRepository.kt` (Interface) |
+| `:core:database` | `entity/FamilyEntity.kt`, `entity/FamilyMemberEntity.kt`, `dao/FamilyDao.kt` |
+| `:core:network` | `firestore/FamilyFirestoreDataSource.kt` (Interface + Impl), `di/FamilyFirestoreModule.kt` |
+| `:feature:family` | `FamilyRepositoryImpl.kt`, `di/FamilyModule.kt`, `FamilyUiState.kt`, `FamilyViewModel.kt`, `FamilyScreen.kt` |
+| `docs/` | `firestore.rules` (Firestore Security Rules) |
+
+**Geaenderte Dateien:**
+- `TierappDatabase`: version 4 -> 5; +FamilyEntity, FamilyMemberEntity, FamilyDao
+- `migration/Migrations.kt`: +MIGRATION_4_5 (family + family_member Tabellen, FK, Unique-Index)
+- `DatabaseModule`: +MIGRATION_4_5, +provideFamilyDao
+- `feature/family/build.gradle.kts`: +core:database, +core:network, +testImplementation
+- `SyncWorker`, `PhotoUploadWorker`: uid-Fallback -> `familyDao.getCurrentFamilyDirect()?.id`
+- `RealtimeSyncObserver`: +familyDao-Parameter; familyId aus Room statt authRepository.uid
+
+**DB-Stand nach Sprint 5.2:** Version 5, Tabellen: pet, pet_photo, family, family_member
+
+**Architektonische Entscheidung -- Circular-Dep-Vermeidung:**
+`FamilyRepositoryImpl` in `:feature:family` (Zugriff auf core:database + core:network ohne Kreisbezug). `:core:sync` injiziert `FamilyDao` direkt -- kein Dep auf `:feature:family`.
+
+**Race-Condition-Eliminierung:**
+`getCurrentFamilyDirect()` ist ein atomarer Room-Read. SyncWorker/PhotoUploadWorker/RealtimeSyncObserver lesen familyId am Job-Start aus Room -- kein veralteter Wert aus WorkManager-InputData moeglich.
+
+**Firestore Security Rules (docs/firestore.rules):**
+- `families/{familyId}`: read = Mitglied; create = authenticated; update = Owner/Admin; delete = Owner
+- `families/{familyId}/members/{userId}`: Self-create erlaubt (Join via Code); Owner-controlled delete
+- `families/{familyId}/pets/{petId}/photos/{photoId}`: read/write = Mitglied
+
+**Tests:** +7 FamilyViewModelTest + 1 RealtimeSyncObserverTest = 41 gesamt
+
+**Offene Punkte:**
+- FamilyScreen noch nicht in NavHost eingehaengt (Sprint 5.5)
+- Health-Entities (Vaccination, MedicalRecord, Medication, Reminder) fehlen in DB (Sprint 3.3-Nacharbeit)
+- `observePhotos` collectionGroup: Firestore-Index fuer familyId-Feld empfohlen ab ~100 Fotos
 
 ### Abhaengigkeiten
 - Phasen 1-4 muessen abgeschlossen sein ✅

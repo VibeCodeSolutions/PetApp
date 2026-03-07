@@ -168,50 +168,66 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 ## Phase 5: Multi-Device & Cloud-Sync
 
 ### Sprint 5.1: Firebase-Setup & Auth ✅ ABGESCHLOSSEN (2026-03-07)
-**Scope:** Firebase-Projekt, Auth mit 3 Providern
+**Scope:** Firebase-Projekt, Auth Google-only (Facebook + Microsoft ausgeklammert)
 **Dateien:** `:core:network`, `:app`
 - [x] Firebase-Projekt anlegen (Firestore, Auth, Storage)
 - [x] `google-services.json` einbinden
-- [x] Firebase Auth: Google Sign-In via Credential Manager (moderner Ersatz fuer GoogleSignInClient)
-- [x] Firebase Auth: Facebook Login via SDK CallbackManager (DisposableEffect fuer Cleanup)
-- [x] Firebase Auth: Microsoft Sign-In via OAuthProvider ("microsoft.com")
+- [x] Firebase Auth: Google Sign-In via Credential Manager
 - [x] `TierResult<T>` + `AuthUser` in `:core:model`
 - [x] `AuthDataSource` (internal) + `FirebaseAuthDataSource` + `FirebaseAuthRepository` + `AuthModule` in `:core:network`
-- [x] `LoginUiState` + `LoginViewModel` + `LoginScreen` (3 Provider-Buttons) in `:app/auth/`
+- [x] `LoginUiState` + `LoginViewModel` + `LoginScreen` in `:app/auth/`
 - [x] Auth-Gate in `MainActivity` (LoginScreenRoute als startDestination wenn unauthenticated)
-- [x] 21 Unit-Tests (11 FirebaseAuthRepositoryTest + 10 LoginViewModelTest, Fake-Pattern)
-- [ ] Verifizierung: Login/Logout mit jedem Provider funktioniert (erfordert manuelle Setup-Schritte)
+- [x] 17 Unit-Tests (9 FirebaseAuthRepositoryTest + 8 LoginViewModelTest)
+- [ ] Verifizierung: Login/Logout mit Google funktioniert (erfordert manuelle Setup-Schritte: SHA-1 in Firebase Console)
 
-### Sprint 5.2: Familien-Verwaltung
+### Sprint 5.2: Familien-Verwaltung ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Familie erstellen, Mitglieder einladen
 **Dateien:** `:feature:family`, `:core:network`, `:core:database`
-- [ ] Family + FamilyMember Room-Entities + DAOs
-- [ ] Firestore-Struktur: `/families/{id}/...`
-- [ ] Familie erstellen (Name, Creator wird Owner)
-- [ ] Einladungs-Mechanismus (Share-Link mit Familien-Code)
-- [ ] Mitglieder-Uebersicht (Rolle, Beitrittsdatum)
-- [ ] Firestore Security Rules (nur Familienmitglieder lesen/schreiben)
-- [ ] Verifizierung: Familie erstellen, zweiter User kann beitreten
+- [x] Family + FamilyMember Room-Entities + DAOs (FamilyDao, FamilyEntity, FamilyMemberEntity)
+- [x] DB-Migration 4->5 (family + family_member Tabellen)
+- [x] Firestore-Struktur: `/families/{id}/members/{userId}` + `/families/{id}/pets/{petId}/...`
+- [x] FamilyFirestoreDataSource (pushFamily, getFamilyByInviteCode, addMember) in :core:network
+- [x] FamilyRepositoryImpl in :feature:family (koordiniert Room SSOT + Firestore; kein Circular Dep)
+- [x] FamilyModule Hilt-Binding in :feature:family/di/
+- [x] Familie erstellen (Name, Creator wird Owner, 8-stelliger Invite-Code generiert)
+- [x] Einladungs-Mechanismus: Invite-Code (8 Zeichen, Base32-Zeichensatz) + Clipboard-Sharing
+- [x] Beitreten per Code: Firestore-Lookup whereEqualTo("inviteCode") + Room-Write
+- [x] Mitglieder-Uebersicht: FamilyScreen (InviteCodeCard + MemberRow-Liste)
+- [x] FamilyViewModel (createFamily, joinByInviteCode, dismissError; State via combine)
+- [x] Firestore Security Rules (docs/firestore.rules): nur Mitglieder lesen/schreiben; Self-Join erlaubt
+- [x] familyId-Fallback (uid) beseitigt in SyncWorker, PhotoUploadWorker, RealtimeSyncObserver
+- [x] 7 Unit-Tests FamilyViewModelTest (Test-First), FakeFamilyDao, FakeFamilyRepository
+- [x] RealtimeSyncObserverTest: +1 Test (onStart ohne Familie)
+- [ ] Verifizierung: Familie erstellen, zweiter User kann beitreten (manuell, erfordert 2 Geraete)
+- [ ] FamilyScreen noch nicht in NavHost eingehaengt (Sprint 5.5)
 
-### Sprint 5.3: Sync-Engine
+### Sprint 5.3: Sync-Engine ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** SyncWorker, Push/Pull, Konfliktaufloesung
 **Dateien:** `:core:sync`
-- [ ] `SyncWorker` (PeriodicWork 15min + OneTime bei Aenderungen)
-- [ ] Push: alle PENDING-Entities zu Firestore (WriteBatch)
-- [ ] Pull: SnapshotListener fuer Realtime (Vordergrund), Pull-Worker (Hintergrund)
-- [ ] Konfliktaufloesung: SyncResolver mit Last-Write-Wins + Feldvergleich
-- [ ] Soft-Delete-Sync (isDeleted propagieren)
-- [ ] `ReminderRefreshWorker` (nach Sync: Erinnerungen aktualisieren)
+- [x] `SyncWorker` (@HiltWorker, PeriodicWork 15min + OneTime bei Aenderungen, exponential Backoff)
+- [x] Push: alle PENDING-Entities zu Firestore (WriteBatch, max 500 Docs)
+- [x] Pull: `SyncEngine.pull()` -- `getPetsModifiedSince` + `getPhotosModifiedSince` (seit letztem Sync-Timestamp)
+- [x] Konfliktaufloesung: `SyncResolver` mit Last-Write-Wins + Feldvergleich (PENDING vs SYNCED)
+- [x] Soft-Delete-Sync (isDeleted propagieren, DeleteLocal/DeleteRemote Decisions)
+- [x] `SyncPreferences` (SharedPreferences) fuer lastSyncTimestamp
+- [x] `SyncScheduler` fuer periodischen + einmaligen Sync + PhotoUpload-Scheduling
+- [x] 12 SyncResolverTest + 9 SyncEngineTest (Test-First)
+- [ ] `ReminderRefreshWorker` blockiert (Health-Entities fehlen in DB) -- Sprint 3.3-Nacharbeit
 - [ ] Verifizierung: Aenderung auf Geraet A erscheint auf Geraet B
 
-### Sprint 5.4: Bild-Sync
-**Scope:** Fotos zu Firebase Storage hochladen/herunterladen
-**Dateien:** `:core:sync`, `:core:media`, `:core:network`
-- [ ] `PhotoUploadWorker` (OneTime, Constraint: CONNECTED + NOT_LOW_BATTERY)
-- [ ] Upload: Original + Thumb-S + Thumb-M -> Firebase Storage
-- [ ] Download: andere Geraete laden Thumbnails automatisch, Originale on-demand
-- [ ] Upload-Status-Tracking (LOCAL_ONLY -> UPLOADING -> UPLOADED / FAILED)
-- [ ] Retry mit exponential Backoff bei Fehler
+### Sprint 5.4: Bild-Sync ✅ ABGESCHLOSSEN (2026-03-07)
+**Scope:** Fotos zu Firebase Storage hochladen, Realtime-Listener
+**Dateien:** `:core:sync`, `:core:network`
+- [x] `PhotoUploadWorker` (@HiltWorker, OneTime, CONNECTED + NOT_LOW_BATTERY)
+- [x] `PhotoUploadEngine`: Upload Original + Thumb-S + Thumb-M -> Firebase Storage
+- [x] Upload-Status-Tracking (LOCAL_ONLY -> UPLOADING -> UPLOADED / FAILED)
+- [x] Retry mit exponential Backoff (max 3 Versuche)
+- [x] `FirestorePetDataSource`: +observePets (callbackFlow, SnapshotListener) + observePhotos
+- [x] `RealtimeSyncObserver` (DefaultLifecycleObserver, ON_START/ON_STOP, @ApplicationScope, kein GlobalScope)
+- [x] `SyncEngine.applyRemoteSnapshot()` fuer Realtime-Snapshots (Firestore -> Room)
+- [x] `TierappApplication`: schedulePeriodicSync() + realtimeSyncObserver.register() in onCreate()
+- [x] 7 PhotoUploadEngineTest + 6 RealtimeSyncObserverTest
+- [ ] observePhotos: collectionGroup ohne Firestore-Index (MVP-Kompromiss, bis ~100 Fotos ok)
 - [ ] Verifizierung: Foto auf Geraet A aufnehmen, auf Geraet B sichtbar
 
 ---

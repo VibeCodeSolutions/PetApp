@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.tierapp.core.database.entity.PetEntity
+import com.example.tierapp.core.model.SyncStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,4 +27,18 @@ interface PetDao {
     /** Soft-Delete: markiert als geloescht und setzt syncStatus auf PENDING fuer den naechsten Sync. */
     @Query("UPDATE pet SET isDeleted = 1, syncStatus = 'PENDING', updatedAt = :updatedAtMilli WHERE id = :id")
     suspend fun softDelete(id: String, updatedAtMilli: Long)
+
+    // --- Sync-Queries ---
+
+    @Query("SELECT * FROM pet WHERE syncStatus = 'PENDING'")
+    suspend fun getPending(): List<PetEntity>
+
+    @Query("SELECT * FROM pet WHERE id = :id")
+    suspend fun getByIdDirect(id: String): PetEntity?
+
+    @Query("UPDATE pet SET syncStatus = :status WHERE id = :id")
+    suspend fun updateSyncStatus(id: String, status: SyncStatus)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(pet: PetEntity)
 }

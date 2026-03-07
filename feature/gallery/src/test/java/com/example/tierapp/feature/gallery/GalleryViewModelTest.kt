@@ -172,6 +172,7 @@ class GalleryViewModelTest {
         thumbMediumPath = "/medium.jpg",
         uploadStatus = UploadStatus.LOCAL_ONLY,
         createdAt = Instant.EPOCH,
+        updatedAt = Instant.EPOCH,
         syncStatus = SyncStatus.SYNCED,
         isDeleted = false,
     )

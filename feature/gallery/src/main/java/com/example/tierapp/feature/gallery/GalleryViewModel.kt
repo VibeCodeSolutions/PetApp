@@ -88,6 +88,7 @@ class GalleryViewModel @Inject constructor(
                             thumbMediumPath = thumbs.thumbMediumPath,
                             uploadStatus = UploadStatus.LOCAL_ONLY,
                             createdAt = Instant.now(),
+                            updatedAt = Instant.now(),
                             syncStatus = SyncStatus.PENDING,
                             isDeleted = false,
                         )
