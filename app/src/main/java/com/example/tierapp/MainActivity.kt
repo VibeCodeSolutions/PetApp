@@ -31,6 +31,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.tierapp.core.ui.theme.TierappTheme
+import com.example.tierapp.feature.gallery.GalleryRoute
 import com.example.tierapp.feature.pets.PetDetailRoute
 import com.example.tierapp.feature.pets.PetEditRoute
 import com.example.tierapp.feature.pets.PetListRoute
@@ -47,6 +48,7 @@ import kotlin.reflect.KClass
 
 @Serializable data class TierDetailRoute(val petId: String)
 @Serializable data class TierBearbeitenRoute(val petId: String? = null)
+@Serializable data class TierGalerieRoute(val petId: String)
 
 // ---- Bottom-Nav ---------------------------------------------------------
 
@@ -160,8 +162,12 @@ private fun TierappApp(modifier: Modifier = Modifier) {
             composable<TierDetailRoute> {
                 PetDetailRoute(
                     onEditClick = { petId -> navController.navigate(TierBearbeitenRoute(petId)) },
+                    onGalleryClick = { petId -> navController.navigate(TierGalerieRoute(petId)) },
                     onBackClick = { navController.popBackStack() },
                 )
+            }
+            composable<TierGalerieRoute> {
+                GalleryRoute(onBackClick = { navController.popBackStack() })
             }
             composable<TierBearbeitenRoute> {
                 PetEditRoute(

@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,6 +68,7 @@ private const val FILE_PROVIDER_AUTHORITY = "com.example.tierapp.fileprovider"
 @Composable
 fun PetDetailRoute(
     onEditClick: (petId: String) -> Unit,
+    onGalleryClick: (petId: String) -> Unit,
     onBackClick: () -> Unit,
     viewModel: PetDetailViewModel = hiltViewModel(),
 ) {
@@ -86,6 +88,7 @@ fun PetDetailRoute(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onEditClick = onEditClick,
+        onGalleryClick = onGalleryClick,
         onBackClick = onBackClick,
         onPhotoSelected = viewModel::onPhotoSelected,
     )
@@ -99,6 +102,7 @@ internal fun PetDetailScreen(
     uiState: PetDetailUiState,
     snackbarHostState: SnackbarHostState,
     onEditClick: (petId: String) -> Unit,
+    onGalleryClick: (petId: String) -> Unit,
     onBackClick: () -> Unit,
     onPhotoSelected: (Uri) -> Unit,
     modifier: Modifier = Modifier,
@@ -148,6 +152,7 @@ internal fun PetDetailScreen(
                     pet = uiState.pet,
                     profilePhotoPath = uiState.profilePhotoPath,
                     onPhotoSelected = onPhotoSelected,
+                    onGalleryClick = { onGalleryClick(uiState.pet.id) },
                     modifier = Modifier.padding(innerPadding),
                 )
             }
@@ -162,6 +167,7 @@ private fun PetDetailContent(
     pet: Pet,
     profilePhotoPath: String?,
     onPhotoSelected: (Uri) -> Unit,
+    onGalleryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -200,6 +206,24 @@ private fun PetDetailContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         PetInfoSection(pet = pet)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        OutlinedCard(
+            onClick = onGalleryClick,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(Icons.Default.Photo, contentDescription = null)
+                Text("Foto-Galerie", style = MaterialTheme.typography.titleSmall)
+            }
+        }
     }
 
     if (showPhotoDialog) {

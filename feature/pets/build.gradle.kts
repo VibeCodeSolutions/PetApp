@@ -13,6 +13,8 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:common"))
     implementation(project(":core:media"))
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.hilt.navigation.compose)

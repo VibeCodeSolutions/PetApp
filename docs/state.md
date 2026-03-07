@@ -233,25 +233,48 @@ Impfungen, medizinische Akte und Medikamente verwalten mit Erinnerungen.
 
 ## Phase 4: Medienverwaltung
 
-**Status:** OFFEN
-**Beginn:** --
+**Status:** IN BEARBEITUNG (Sprint 4.1 abgeschlossen)
+**Beginn:** 2026-03-07
 **Abschluss:** --
 
 ### Ziel
 Foto-Galerie pro Tier mit effizienter Bildverwaltung.
 
 ### Erwarteter Endzustand
-- [ ] Foto-Galerie als Grid (LazyVerticalGrid)
-- [ ] Multi-Foto-Upload aus Galerie/Kamera
-- [ ] Vollbild-Ansicht mit Zoom
-- [ ] Disk-Cache-Management (250MB Limit, LRU)
-- [ ] Foto-Loeschen mit Confirmation
+- [x] Foto-Galerie als Grid (LazyVerticalGrid, 3 Spalten)
+- [x] Multi-Foto-Upload aus Galerie (PickMultipleVisualMedia)
+- [x] Vollbild-Ansicht mit Zoom (Modifier.transformable, coerceIn 1x-5x)
+- [x] Disk-Cache-Management (Coil: 64MB RAM / 250MB Disk via SingletonImageLoader.Factory)
+- [x] Foto-Loeschen mit Confirmation-Dialog
+- [x] Navigation PetDetail -> Galerie (TierGalerieRoute)
 
-### Snapshot
-_Wird nach Abschluss der Phase ausgefuellt._
+### Snapshot Sprint 4.1 (2026-03-07)
+
+**Abgeschlossen:** Foto-Galerie
+
+**Neue Dateien:**
+- `feature/gallery/src/main/java/.../GalleryUiState.kt` -- sealed interface: Loading/Empty/Success(photos)
+- `feature/gallery/src/main/java/.../GalleryViewModel.kt` -- uiState (stateIn WhileSubscribed 5s), fullscreenPhotoId: StateFlow<String?>, deleteDialogPhotoId: StateFlow<String?>; importPhotos mit withContext(IO) fuer blocking ThumbnailManager-Aufruf
+- `feature/gallery/src/main/java/.../GalleryScreen.kt` -- LazyVerticalGrid (3 Spalten, Thumb-M 400x400), FullscreenPhotoView (Box-Overlay mit transformable + graphicsLayer), BackHandler, DeleteConfirmDialog
+- `feature/gallery/src/test/java/.../GalleryViewModelTest.kt` -- 9 Unit-Tests (Loading, Empty, Success, Import mit/ohne URIs, Vollbild open/close, Delete confirm/cancel, Auto-Close-bei-Loeschung)
+- `feature/gallery/src/test/java/.../MainDispatcherRule.kt`
+
+**Geaenderte Dateien:**
+- `feature/gallery/build.gradle.kts` -- coil-compose, lifecycle-runtime-compose, activity-compose, material-icons-extended, testImplementation
+- `app/build.gradle.kts` -- +feature:gallery, +coil-compose
+- `app/.../TierappApplication.kt` -- implementiert SingletonImageLoader.Factory: MemoryCache 64MB, DiskCache 250MB (coil_cache/), crossfade(true)
+- `app/.../MainActivity.kt` -- TierGalerieRoute(petId), composable-Block fuer GalleryRoute, onGalleryClick in TierDetailRoute-Composable
+- `feature/pets/.../PetDetailScreen.kt` -- onGalleryClick durch alle Schichten (Route->Screen->Content), OutlinedCard "Foto-Galerie" am Ende von PetDetailContent
+
+**Architektonische Entscheidungen:**
+- `fullscreenPhotoId: StateFlow<String?>` speichert Photo-ID statt Index -- robust gegen Listenmutationen bei gleichzeitigem Loeschen; UI loest ID per `photos.firstOrNull { it.id == fullscreenPhotoId }` auf
+- `var scale by remember(photoPath)` -- scale-State ist an das aktuell angezeigte Foto gebunden; automatischer Reset beim Foto-Wechsel; lebt nur in Composition (kein ViewModel-State = kein Memory Leak)
+- `confirmDelete()` schliesst Vollbild atomar mit Loeschvorgang wenn das angezeigte Foto geloescht wird
+- `withContext(Dispatchers.IO)` pro URI innerhalb `viewModelScope.launch` -- blockierender BitmapFactory-Aufruf verlasst Main-Thread; `runCatching` pro URI -- korrupte Dateien ueberspringen Import ohne Abbruch
+- Soft-Delete in `PetPhotoDao` (isDeleted=1) -- Room-Flow emittiert automatisch aktualisierte Liste; Vollbild-Overlay verschwindet ohne explizites Close durch die UI
 
 ### Abhaengigkeiten
-- Phase 2 muss abgeschlossen sein (PetPhoto-Entity, :core:media)
+- Phase 2 muss abgeschlossen sein (PetPhoto-Entity, :core:media) ✅
 
 ---
 

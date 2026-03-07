@@ -149,16 +149,18 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 
 ## Phase 4: Medienverwaltung
 
-### Sprint 4.1: Foto-Galerie
+### Sprint 4.1: Foto-Galerie ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Galerie-Grid pro Tier, Multi-Upload, Vollbild
-**Dateien:** `:feature:gallery`, `:core:media`
-- [ ] `GalleryViewModel` + `GalleryScreen` (LazyVerticalGrid)
-- [ ] Multi-Foto-Auswahl (PickMultipleVisualMedia)
-- [ ] Thumbnail-Anzeige im Grid (Thumb-M 400x400)
-- [ ] Vollbild-Ansicht mit Zoom (Modifier.transformable)
-- [ ] Foto-Loeschen mit Confirmation-Dialog
-- [ ] Disk-Cache-Management (Coil 250MB Limit)
-- [ ] Navigation: PetDetail -> Gallery
+**Dateien:** `:feature:gallery`, `:core:media`, `:app`
+- [x] `GalleryViewModel` + `GalleryScreen` (LazyVerticalGrid, 3 Spalten)
+- [x] Multi-Foto-Auswahl (PickMultipleVisualMedia)
+- [x] Thumbnail-Anzeige im Grid (Thumb-M 400x400, Coil AsyncImage)
+- [x] Vollbild-Ansicht mit Zoom (Modifier.transformable, coerceIn 1x-5x, graphicsLayer)
+- [x] Foto-Loeschen mit Confirmation-Dialog (soft-delete, Room-Flow aktualisiert UI automatisch)
+- [x] Disk-Cache-Management (Coil SingletonImageLoader.Factory: 64MB RAM / 250MB Disk)
+- [x] Navigation: PetDetail -> Gallery (TierGalerieRoute, OutlinedCard in PetDetailContent)
+- [x] 9 Unit-Tests fuer GalleryViewModel (Test-First)
+- [x] Memory-Leak-Review: scale-State in remember(photoPath), kein ViewModel-Zoom-State
 - [ ] Verifizierung: Fotos hochladen, Grid anzeigen, Vollbild zoomen, loeschen
 
 ---
@@ -172,7 +174,6 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `google-services.json` einbinden
 - [ ] Firebase Auth: Google Sign-In konfigurieren
 - [ ] Firebase Auth: Facebook Login konfigurieren (Facebook Developer App)
-- [ ] Firebase Auth: Microsoft Login konfigurieren (Azure AD)
 - [ ] Login/Registrierungs-Screen mit 3 Provider-Buttons
 - [ ] Auth-State in ViewModel (eingeloggt/ausgeloggt)
 - [ ] Verifizierung: Login/Logout mit jedem Provider funktioniert
