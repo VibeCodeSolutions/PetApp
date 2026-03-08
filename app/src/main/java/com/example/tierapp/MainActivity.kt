@@ -49,6 +49,7 @@ import kotlin.reflect.KClass
 @Serializable data object GesundheitRoute
 @Serializable data object FamilieRoute
 @Serializable data object EinstellungenRoute
+@Serializable data object DatenschutzRoute
 
 @Serializable data class TierDetailRoute(val petId: String)
 @Serializable data class TierBearbeitenRoute(val petId: String? = null)
@@ -175,7 +176,11 @@ private fun TierappApp(
                             popUpTo<LoginScreenRoute> { inclusive = true }
                         }
                     },
+                    onDatenschutzClick = { navController.navigate(DatenschutzRoute) },
                 )
+            }
+            composable<DatenschutzRoute> {
+                DatenschutzScreen(onBackClick = { navController.popBackStack() })
             }
             composable<TiereRoute> {
                 PetListRoute(

@@ -3,6 +3,11 @@ package com.example.tierapp.feature.family
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -178,26 +183,32 @@ private fun NoFamilyContent(
             Text(if (showJoinField) "Abbrechen" else "Per Einladungscode beitreten")
         }
 
-        if (showJoinField) {
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = inviteCode,
-                onValueChange = { inviteCode = it.uppercase() },
-                label = { Text("Einladungscode") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    if (inviteCode.isNotBlank()) onJoinFamily(inviteCode)
-                }),
-            )
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { if (inviteCode.isNotBlank()) onJoinFamily(inviteCode) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = inviteCode.isNotBlank(),
-            ) {
-                Text("Beitreten")
+        AnimatedVisibility(
+            visible = showJoinField,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = inviteCode,
+                    onValueChange = { inviteCode = it.uppercase() },
+                    label = { Text("Einladungscode") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (inviteCode.isNotBlank()) onJoinFamily(inviteCode)
+                    }),
+                )
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { if (inviteCode.isNotBlank()) onJoinFamily(inviteCode) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = inviteCode.isNotBlank(),
+                ) {
+                    Text("Beitreten")
+                }
             }
         }
     }

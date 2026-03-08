@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +39,7 @@ import com.example.tierapp.core.ui.theme.TierappTheme
 @Composable
 fun LoginRoute(
     onAuthenticated: () -> Unit,
+    onDatenschutzClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
@@ -53,6 +55,7 @@ fun LoginRoute(
             viewModel.initiateGoogleSignIn(context, webClientId)
         },
         onClearError = viewModel::clearError,
+        onDatenschutzClick = onDatenschutzClick,
         modifier = modifier,
     )
 }
@@ -62,6 +65,7 @@ internal fun LoginScreen(
     uiState: LoginUiState,
     onGoogleSignIn: (context: android.content.Context, webClientId: String) -> Unit,
     onClearError: () -> Unit,
+    onDatenschutzClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -115,6 +119,16 @@ internal fun LoginScreen(
                 Text(text = stringResource(R.string.login_google))
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextButton(onClick = onDatenschutzClick) {
+                Text(
+                    text = stringResource(R.string.datenschutz_link),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
         }
 
         if (isLoading) {
@@ -140,6 +154,7 @@ private fun LoginScreenUnauthenticatedPreview() {
             uiState = LoginUiState.Unauthenticated,
             onGoogleSignIn = { _, _ -> },
             onClearError = {},
+            onDatenschutzClick = {},
         )
     }
 }
@@ -152,6 +167,7 @@ private fun LoginScreenLoadingPreview() {
             uiState = LoginUiState.Loading,
             onGoogleSignIn = { _, _ -> },
             onClearError = {},
+            onDatenschutzClick = {},
         )
     }
 }

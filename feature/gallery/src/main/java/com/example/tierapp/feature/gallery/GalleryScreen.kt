@@ -6,17 +6,20 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -24,8 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -80,6 +85,7 @@ fun GalleryRoute(
         onRequestDelete = viewModel::requestDelete,
         onConfirmDelete = viewModel::confirmDelete,
         onCancelDelete = viewModel::cancelDelete,
+        onRetry = viewModel::retry,
     )
 }
 
@@ -98,6 +104,7 @@ internal fun GalleryScreen(
     onRequestDelete: (photoId: String) -> Unit,
     onConfirmDelete: () -> Unit,
     onCancelDelete: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Photos aus dem aktuellen Success-State (für Vollbild-Lookup)
@@ -122,31 +129,69 @@ internal fun GalleryScreen(
                 }
             },
         ) { innerPadding ->
-            when (uiState) {
-                GalleryUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(innerPadding),
-                        contentAlignment = Alignment.Center,
-                    ) { CircularProgressIndicator() }
-                }
-                GalleryUiState.Empty -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(innerPadding),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "Noch keine Fotos. Tippe auf + um welche hinzuzufügen.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Crossfade(
+                targetState = uiState,
+                label = "gallery_content",
+                modifier = Modifier.padding(innerPadding),
+            ) { state ->
+                when (state) {
+                    GalleryUiState.Loading -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    GalleryUiState.Empty -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Photo,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = "Noch keine Fotos vorhanden",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = "Tippe auf + um Fotos hinzuzufügen.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                    is GalleryUiState.Success -> {
+                        PhotoGrid(
+                            photos = state.photos,
+                            onPhotoClick = { photo -> onPhotoClick(photo.id) },
                         )
                     }
-                }
-                is GalleryUiState.Success -> {
-                    PhotoGrid(
-                        photos = uiState.photos,
-                        onPhotoClick = { photo -> onPhotoClick(photo.id) },
-                        modifier = Modifier.padding(innerPadding),
-                    )
+                    is GalleryUiState.Error -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                                Text(
+                                    text = state.message,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                                Button(onClick = onRetry) { Text("Erneut versuchen") }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -185,11 +230,11 @@ private fun PhotoGrid(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        itemsIndexed(photos, key = { _, photo -> photo.id }) { _, photo ->
+        itemsIndexed(photos, key = { _, photo -> photo.id }) { index, photo ->
             // Thumb-M (400×400) im Grid — niemals Originale
             AsyncImage(
                 model = photo.thumbMediumPath,
-                contentDescription = null,
+                contentDescription = "Foto ${index + 1}",
                 placeholder = placeholderPainter,
                 error = placeholderPainter,
                 contentScale = ContentScale.Crop,

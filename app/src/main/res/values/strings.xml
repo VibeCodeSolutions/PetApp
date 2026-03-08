@@ -16,4 +16,12 @@
         Die richtige ID steht auch in google-services.json unter "oauth_client[type=3].client_id".
     -->
     <string name="default_web_client_id">474664557293-pak7d728avugiqo29lmq6k6hef5iumel.apps.googleusercontent.com</string>
+
+    <!-- Accessibility content descriptions -->
+    <string name="cd_navigate_back">Zurück</string>
+
+    <!-- Datenschutzerklärung -->
+    <string name="datenschutz_title">Datenschutzerklärung</string>
+    <string name="datenschutz_link">Datenschutzerklärung</string>
+    <string name="datenschutz_content">Datenschutzerklärung für Tierapp\n\nStand: März 2026\n\n1. Verantwortlicher\nDiese App wird privat betrieben. Der Betreiber ist der jeweilige Nutzer des Geräts.\n\n2. Erhobene Daten\nDie App speichert lokal auf Ihrem Gerät: Tierdaten (Name, Art, Rasse, Gesundheitsdaten), Fotos Ihrer Tiere sowie Informationen über Familienmitglieder (E-Mail, Anzeigename).\n\n3. Firebase-Dienste\nZur Synchronisation zwischen Geräten werden Google Firebase Dienste (Firestore, Storage, Authentication) genutzt. Die Daten werden gemäß den Datenschutzrichtlinien von Google verarbeitet.\n\n4. Google Sign-In\nDie Anmeldung erfolgt über Google. Dabei werden Name und E-Mail-Adresse Ihres Google-Kontos übermittelt und in der App gespeichert.\n\n5. Datenweitergabe\nIhre Daten werden ausschließlich mit den von Ihnen eingeladenen Familienmitgliedern geteilt. Eine Weitergabe an Dritte findet nicht statt.\n\n6. Ihre Rechte\nSie haben das Recht auf Auskunft, Berichtigung und Löschung Ihrer gespeicherten Daten. Um alle Daten zu löschen, deinstallieren Sie die App und löschen Sie Ihren Firebase-Account.\n\n7. Änderungen\nÄnderungen dieser Datenschutzerklärung werden in der App bekannt gegeben.</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.example.tierapp.feature.pets
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +19,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +57,7 @@ fun PetListRoute(
         uiState = uiState,
         onAddPetClick = onAddPetClick,
         onPetClick = onPetClick,
+        onRetry = viewModel::retry,
     )
 }
 
@@ -62,6 +68,7 @@ internal fun PetListScreen(
     uiState: PetListUiState,
     onAddPetClick: () -> Unit,
     onPetClick: (petId: String) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -78,14 +85,23 @@ internal fun PetListScreen(
             }
         },
     ) { innerPadding ->
-        when (uiState) {
-            PetListUiState.Loading -> LoadingContent(modifier = Modifier.padding(innerPadding))
-            PetListUiState.Empty -> EmptyContent(modifier = Modifier.padding(innerPadding))
-            is PetListUiState.Success -> PetList(
-                pets = uiState.pets,
-                onPetClick = onPetClick,
-                modifier = Modifier.padding(innerPadding),
-            )
+        Crossfade(
+            targetState = uiState,
+            label = "pet_list_content",
+            modifier = Modifier.padding(innerPadding),
+        ) { state ->
+            when (state) {
+                PetListUiState.Loading -> LoadingContent()
+                PetListUiState.Empty -> EmptyContent()
+                is PetListUiState.Success -> PetList(
+                    pets = state.pets,
+                    onPetClick = onPetClick,
+                )
+                is PetListUiState.Error -> ErrorContent(
+                    message = state.message,
+                    onRetry = onRetry,
+                )
+            }
         }
     }
 }
@@ -108,19 +124,58 @@ private fun EmptyContent(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Icon(
                 imageVector = Icons.Default.Pets,
                 contentDescription = null,
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(72.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = "Noch keine Tiere vorhanden",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp),
             )
+            Text(
+                text = "Tippe auf + um dein erstes Tier hinzuzufügen.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorContent(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.ErrorOutline,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.error,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Button(onClick = onRetry) {
+                Text("Erneut versuchen")
+            }
         }
     }
 }
@@ -140,7 +195,11 @@ private fun PetList(
             items = pets,
             key = { pet -> pet.id },
         ) { pet ->
-            PetCard(pet = pet, onClick = { onPetClick(pet.id) })
+            PetCard(
+                pet = pet,
+                onClick = { onPetClick(pet.id) },
+                modifier = Modifier.animateItem(),
+            )
         }
     }
 }
@@ -154,7 +213,10 @@ private fun PetCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = pet.name }
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Row(

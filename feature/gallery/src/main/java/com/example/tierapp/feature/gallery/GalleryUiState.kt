@@ -7,4 +7,5 @@ sealed interface GalleryUiState {
     data object Loading : GalleryUiState
     data object Empty : GalleryUiState
     data class Success(val photos: List<PetPhoto>) : GalleryUiState
+    data class Error(val message: String) : GalleryUiState
 }

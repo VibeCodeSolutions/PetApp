@@ -460,7 +460,7 @@ Familien-Konten und Offline-First Cloud-Synchronisation.
 
 ## Phase 6: Polish & Release
 
-**Status:** IN BEARBEITUNG (Sprint 6.1 abgeschlossen)
+**Status:** IN BEARBEITUNG (Sprints 6.1 + 6.2 abgeschlossen)
 **Beginn:** 2026-03-07
 **Abschluss:** --
 
@@ -468,13 +468,13 @@ Familien-Konten und Offline-First Cloud-Synchronisation.
 Produktionsreife: Performance, Sicherheit, Accessibility, Store-Vorbereitung.
 
 ### Erwarteter Endzustand
-- [ ] R8/ProGuard aktiv (isMinifyEnabled = true)
-- [ ] Firebase Crashlytics integriert
-- [ ] Baseline Profiles generiert
-- [ ] Accessibility geprueft (ContentDescription, Touch-Targets)
-- [ ] Datenschutzerklaerung vorhanden
-- [ ] App-Icon + Splash-Screen finalisiert
-- [ ] Edge-Case-Tests bestanden (Offline, viele Tiere, grosse Bilder)
+- [x] R8/ProGuard aktiv (isMinifyEnabled = true) — Sprint 6.1
+- [x] Firebase Crashlytics integriert — Sprint 6.1
+- [x] Baseline Profiles generiert — Sprint 6.1
+- [x] Accessibility geprueft (ContentDescription, Touch-Targets) — Sprint 6.2
+- [x] Datenschutzerklaerung vorhanden — Sprint 6.2
+- [ ] App-Icon + Splash-Screen finalisiert — Sprint 6.3
+- [ ] Edge-Case-Tests bestanden (Offline, viele Tiere, grosse Bilder) — Sprint 6.3
 
 ### Snapshot Sprint 6.1 (2026-03-07)
 
@@ -485,6 +485,51 @@ Produktionsreife: Performance, Sicherheit, Accessibility, Store-Vorbereitung.
 - `gradle/libs.versions.toml`: `macrobenchmark`, `profileinstaller`, `uiautomator` Versionen + Library-Eintraege
 - `:macrobenchmark` Modul (com.android.test): `BaselineProfileGenerator` + `TierappStartupBenchmark`
 - `settings.gradle.kts`: `:macrobenchmark` registriert (15 Module gesamt)
+
+---
+
+### Snapshot Sprint 6.2 (2026-03-08)
+
+**Abgeschlossen:** UX-Polish & Accessibility
+
+**Neue Dateien:**
+
+| Datei | Beschreibung |
+|---|---|
+| `app/.../DatenschutzScreen.kt` | Scrollbarer Datenschutz-Screen mit TopAppBar + Back-Navigation |
+
+**Geaenderte Dateien:**
+
+| Datei | Aenderung |
+|---|---|
+| `app/res/values/strings.xml` | +`cd_navigate_back`, +`datenschutz_title/link/content` |
+| `app/.../MainActivity.kt` | +`DatenschutzRoute` (@Serializable data object); +`composable<DatenschutzRoute>`; `LoginRoute` erhaelt `onDatenschutzClick`-Lambda |
+| `app/.../auth/LoginScreen.kt` | +`onDatenschutzClick` in Route + Screen-Signatur; +`TextButton` (Datenschutzerklaerung) unterhalb Google-Button |
+| `feature/pets/.../PetListUiState.kt` | +`Error(val message: String)` State |
+| `feature/pets/.../PetListViewModel.kt` | +`_retryTrigger: MutableStateFlow<Int>`; `uiState` Flow wrapped in `_retryTrigger.flatMapLatest`; +`.catch{}`; +`fun retry()` |
+| `feature/pets/.../PetListScreen.kt` | +`onRetry`-Lambda; `Crossfade` fuer State-Wechsel; +`ErrorContent` mit Retry-Button; Empty-State mit Icon + 2-zeiligem Hint; `animateItem()` in LazyColumn; `semantics { contentDescription }` auf PetCard |
+| `feature/gallery/.../GalleryUiState.kt` | +`Error(val message: String)` State |
+| `feature/gallery/.../GalleryViewModel.kt` | +`@OptIn(ExperimentalCoroutinesApi::class)`; +`_retryTrigger`; `uiState` wrapped in `flatMapLatest`; +`.catch{}`; +`fun retry()` |
+| `feature/gallery/.../GalleryScreen.kt` | +`onRetry`-Lambda in Route + Screen-Signatur; `Crossfade` fuer State-Wechsel; Empty-State mit `Icons.Default.Photo` + Hint; +`ErrorContent` mit Retry-Button; `contentDescription = "Foto ${index + 1}"` fuer Grid-Items |
+| `feature/family/.../FamilyScreen.kt` | +`AnimatedVisibility` (expandVertically+fadeIn / shrinkVertically+fadeOut) um Join-Code-Feld |
+
+**Architektonische Entscheidungen:**
+- `_retryTrigger.flatMapLatest { ... }` statt einzelnem `catch` auf aeusserstem Flow: Retry cancelt den laufenden Inner-Flow sauber und startet eine neue Subscription -- kein zustandsbehaftetes Re-Subscribe-Idiom noetig
+- `Crossfade(targetState = uiState)` auf sealed-interface-Ebene: Nur Haupt-State-Transitionen werden animiert; Aenderungen innerhalb `Success` (z.B. Listenupdate) triggern keine neue Animation
+- `animateItem()` in `LazyColumn` (Compose 1.7+ API): Items gleiten beim Einf\"uegen/Entfernen sanft; ersetzt depreciertes `animateItemPlacement()`
+- `AnimatedVisibility` mit `expandVertically` statt `slideInVertically`: Verhindert Content-Clipping ausserhalb des Containers ohne `clipToBounds`-Override
+- `IconButton` (Material3) garantiert immer 48dp Touch-Target -- auch wenn die visuelle Groesse kleiner ist (z.B. 40dp im ProfilePhoto). Kein `minimumInteractiveComponentSize()` noetig.
+
+**Touch-Target-Audit:**
+- `IconButton` (zurueck, loeschen, kopieren, kamera-overlay): 48dp via M3-Default ✅
+- `PetCard` (`clickable` auf Card): Hoehe durch Content-Padding >> 48dp ✅
+- `FloatingActionButton`: 56dp via M3-Default ✅
+- `Button` / `TextButton`: Mindesthoehe 40dp + internes Touch-Padding = 48dp via M3 ✅
+- Grid-Fotos (`clickable`): ~120dp (Bildschirmbreite / 3) ✅
+
+**Offene Punkte:**
+- TalkBack-Durchlauf manuell durchfuehren (Geraet erforderlich)
+- `PetSpecies.toDisplayName()` dreifach vorhanden (technische Schuld aus Phase 2) -- Konsolidierung in Sprint 6.3 oder spaeter
 
 ### Abhaengigkeiten
 - Phase 5 muss abgeschlossen sein ✅

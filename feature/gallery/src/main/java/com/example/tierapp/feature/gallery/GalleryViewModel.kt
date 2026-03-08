@@ -12,10 +12,13 @@ import com.example.tierapp.core.model.SyncStatus
 import com.example.tierapp.core.model.UploadStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -24,6 +27,7 @@ import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val petPhotoRepository: PetPhotoRepository,
@@ -35,15 +39,23 @@ class GalleryViewModel @Inject constructor(
 
     // ---- Foto-Liste --------------------------------------------------------
 
-    val uiState: StateFlow<GalleryUiState> = petPhotoRepository.getByPetId(petId)
-        .map { photos ->
-            if (photos.isEmpty()) GalleryUiState.Empty else GalleryUiState.Success(photos)
+    private val _retryTrigger = MutableStateFlow(0)
+
+    val uiState: StateFlow<GalleryUiState> = _retryTrigger
+        .flatMapLatest {
+            petPhotoRepository.getByPetId(petId)
+                .map { photos ->
+                    if (photos.isEmpty()) GalleryUiState.Empty else GalleryUiState.Success(photos)
+                }
+                .catch { e -> emit(GalleryUiState.Error(e.message ?: "Fehler beim Laden")) }
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = GalleryUiState.Loading,
         )
+
+    fun retry() { _retryTrigger.value++ }
 
     // ---- Vollbild ----------------------------------------------------------
     // Speichert Photo-ID statt Index → bleibt gültig wenn Liste sich ändert

@@ -14,4 +14,5 @@ sealed interface PetListUiState {
     data object Loading : PetListUiState
     data object Empty : PetListUiState
     data class Success(val pets: List<PetSummary>) : PetListUiState
+    data class Error(val message: String) : PetListUiState
 }

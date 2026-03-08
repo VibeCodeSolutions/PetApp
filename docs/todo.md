@@ -262,15 +262,16 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `androidx.profileinstaller` in `:app`; `android.baselineprofile` Plugin in `:app` + `:macrobenchmark`
 - [ ] Verifizierung: Release-Build laeuft, Crashlytics empfaengt Test-Crash
 
-### Sprint 6.2: UX-Polish & Accessibility
+### Sprint 6.2: UX-Polish & Accessibility ✅ ABGESCHLOSSEN (2026-03-08)
 **Scope:** Feinschliff, Accessibility, Datenschutz
-**Dateien:** alle Feature-Module, `:core:ui`
-- [ ] ContentDescription fuer alle interaktiven Elemente
-- [ ] Touch-Targets mindestens 48dp
-- [ ] Animationen (Crossfade, Shared Element Transitions)
-- [ ] Empty-States mit Illustrationen
-- [ ] Error-States mit Retry-Buttons
-- [ ] Datenschutzerklaerung-Screen
+**Dateien:** `:feature:pets`, `:feature:gallery`, `:feature:family`, `:app`
+- [x] ContentDescription fuer alle interaktiven Elemente (PetCard semantics, Galerie-Fotos "Foto N", IconButtons bereits korrekt via Material3)
+- [x] Touch-Targets mindestens 48dp (Material3 IconButton liefert 48dp automatisch; PetCard-Flaeche groesser als 48dp durch Padding)
+- [x] Animationen: `Crossfade` (PetListScreen, GalleryScreen), `animateItem()` (LazyColumn), `AnimatedVisibility` (FamilyScreen Join-Feld)
+- [x] Empty-States verbessert (Icon + 2-zeiliger Hint in PetList und Gallery)
+- [x] Error-States mit Retry-Buttons (`PetListUiState.Error`, `GalleryUiState.Error`, `ErrorContent`-Composable)
+- [x] Retry-Logik in ViewModels (`_retryTrigger` + `retry()` + `.catch{}` in Flow-Chain)
+- [x] Datenschutzerklaerung-Screen (`DatenschutzScreen.kt`, `DatenschutzRoute` in NavHost, Link im LoginScreen)
 - [ ] Verifizierung: TalkBack-Durchlauf, keine fehlenden Descriptions
 
 ### Sprint 6.3: Release-Vorbereitung
