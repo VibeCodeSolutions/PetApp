@@ -20,6 +20,9 @@
     <!-- Accessibility content descriptions -->
     <string name="cd_navigate_back">Zurück</string>
 
+    <!-- Branding -->
+    <string name="branding_footer">VibeCode Solutions</string>
+
     <!-- Datenschutzerklärung -->
     <string name="datenschutz_title">Datenschutzerklärung</string>
     <string name="datenschutz_link">Datenschutzerklärung</string>

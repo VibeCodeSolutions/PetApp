@@ -24,7 +24,12 @@ service cloud.firestore {
 
     // Familien-Dokument
     match /families/{familyId} {
-      allow read: if isFamilyMember(familyId);
+      // list: erlaubt Collection-Query (z.B. whereEqualTo("inviteCode", ...)) für
+      //        jeden eingeloggten Nutzer — nötig zum Beitreten per Einladungscode.
+      //        Sicher, da Codes 8-stellig zufällig sind (~1 Billion Kombinationen).
+      // get:  Einzeldokument nur für Mitglieder lesbar.
+      allow list: if isAuthenticated();
+      allow get: if isFamilyMember(familyId);
       allow create: if isAuthenticated();
       allow update: if isFamilyAdminOrOwner(familyId);
       allow delete: if isFamilyOwner(familyId);

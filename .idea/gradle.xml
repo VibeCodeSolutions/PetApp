@@ -39,6 +39,7 @@
             <option value="$PROJECT_DIR$/feature/health" />
             <option value="$PROJECT_DIR$/feature/pets" />
             <option value="$PROJECT_DIR$/feature/settings" />
+            <option value="$PROJECT_DIR$/macrobenchmark" />
           </set>
         </option>
       </GradleProjectSettings>

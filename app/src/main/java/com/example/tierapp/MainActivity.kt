@@ -5,8 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
@@ -14,6 +17,7 @@ import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -24,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -36,9 +42,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tierapp.core.ui.theme.TierappTheme
 import com.example.tierapp.feature.family.FamilyScreen
 import com.example.tierapp.feature.gallery.GalleryRoute
+import com.example.tierapp.feature.health.HealthRoute
 import com.example.tierapp.feature.pets.PetDetailRoute
 import com.example.tierapp.feature.pets.PetEditRoute
 import com.example.tierapp.feature.pets.PetListRoute
+import com.example.tierapp.feature.settings.SettingsRoute
+import com.example.tierapp.feature.settings.SettingsViewModel
+import com.example.tierapp.feature.settings.ThemeMode
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.Serializable
 import kotlin.reflect.KClass
@@ -108,9 +119,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TierappTheme {
-                TierappApp()
-            }
+            TierappApp()
         }
     }
 }
@@ -119,13 +128,21 @@ class MainActivity : ComponentActivity() {
 private fun TierappApp(
     modifier: Modifier = Modifier,
     authViewModel: com.example.tierapp.auth.LoginViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    settingsViewModel: SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
-    // Auth-Gate: Start auf LoginScreen wenn nicht authentifiziert
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (settingsState.themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> systemDark
+    }
+
     val startDestination: Any = if (authState is com.example.tierapp.auth.LoginUiState.Authenticated) {
         TiereRoute
     } else {
@@ -136,101 +153,110 @@ private fun TierappApp(
         topLevelRoutes.any { dest.hasRoute(it) }
     } ?: false
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar {
-                    bottomNavItems.forEach { item ->
-                        NavigationBarItem(
-                            selected = item.isSelected(currentDestination),
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = stringResource(item.labelRes),
+    TierappTheme(darkTheme = darkTheme) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            bottomBar = {
+                if (showBottomBar) {
+                    Column {
+                        NavigationBar {
+                            bottomNavItems.forEach { item ->
+                                NavigationBarItem(
+                                    selected = item.isSelected(currentDestination),
+                                    onClick = {
+                                        navController.navigate(item.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = {
+                                        Icon(
+                                            imageVector = item.icon,
+                                            contentDescription = stringResource(item.labelRes),
+                                        )
+                                    },
+                                    label = { Text(text = stringResource(item.labelRes)) },
                                 )
-                            },
-                            label = { Text(text = stringResource(item.labelRes)) },
+                            }
+                        }
+                        // VibeCode Solutions branding
+                        Text(
+                            text = stringResource(R.string.branding_footer),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 4.dp),
                         )
                     }
                 }
-            }
-        },
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding),
-        ) {
-            composable<LoginScreenRoute> {
-                LoginRoute(
-                    onAuthenticated = {
-                        navController.navigate(TiereRoute) {
-                            popUpTo<LoginScreenRoute> { inclusive = true }
-                        }
-                    },
-                    onDatenschutzClick = { navController.navigate(DatenschutzRoute) },
-                )
-            }
-            composable<DatenschutzRoute> {
-                DatenschutzScreen(onBackClick = { navController.popBackStack() })
-            }
-            composable<TiereRoute> {
-                PetListRoute(
-                    onAddPetClick = { navController.navigate(TierBearbeitenRoute()) },
-                    onPetClick = { petId -> navController.navigate(TierDetailRoute(petId)) },
-                )
-            }
-            composable<TierDetailRoute> {
-                PetDetailRoute(
-                    onEditClick = { petId -> navController.navigate(TierBearbeitenRoute(petId)) },
-                    onGalleryClick = { petId -> navController.navigate(TierGalerieRoute(petId)) },
-                    onBackClick = { navController.popBackStack() },
-                )
-            }
-            composable<TierGalerieRoute> {
-                GalleryRoute(onBackClick = { navController.popBackStack() })
-            }
-            composable<TierBearbeitenRoute> {
-                PetEditRoute(
-                    onSaved = { navController.popBackStack() },
-                    onBackClick = { navController.popBackStack() },
-                )
-            }
-            composable<GesundheitRoute> { GesundheitPlaceholderScreen() }
-            composable<FamilieRoute> {
-                val currentUser =
-                    (authState as? com.example.tierapp.auth.LoginUiState.Authenticated)?.user
-                if (currentUser != null) {
-                    FamilyScreen(currentUser = currentUser)
+            },
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                modifier = Modifier.padding(innerPadding),
+            ) {
+                composable<LoginScreenRoute> {
+                    LoginRoute(
+                        onAuthenticated = {
+                            navController.navigate(TiereRoute) {
+                                popUpTo<LoginScreenRoute> { inclusive = true }
+                            }
+                        },
+                        onDatenschutzClick = { navController.navigate(DatenschutzRoute) },
+                    )
+                }
+                composable<DatenschutzRoute> {
+                    DatenschutzScreen(onBackClick = { navController.popBackStack() })
+                }
+                composable<TiereRoute> {
+                    PetListRoute(
+                        onAddPetClick = { navController.navigate(TierBearbeitenRoute()) },
+                        onPetClick = { petId -> navController.navigate(TierDetailRoute(petId)) },
+                    )
+                }
+                composable<TierDetailRoute> {
+                    PetDetailRoute(
+                        onEditClick = { petId -> navController.navigate(TierBearbeitenRoute(petId)) },
+                        onGalleryClick = { petId -> navController.navigate(TierGalerieRoute(petId)) },
+                        onBackClick = { navController.popBackStack() },
+                    )
+                }
+                composable<TierGalerieRoute> {
+                    GalleryRoute(onBackClick = { navController.popBackStack() })
+                }
+                composable<TierBearbeitenRoute> {
+                    PetEditRoute(
+                        onSaved = { navController.popBackStack() },
+                        onBackClick = { navController.popBackStack() },
+                    )
+                }
+                composable<GesundheitRoute> {
+                    HealthRoute()
+                }
+                composable<FamilieRoute> {
+                    val currentUser =
+                        (authState as? com.example.tierapp.auth.LoginUiState.Authenticated)?.user
+                    if (currentUser != null) {
+                        FamilyScreen(currentUser = currentUser)
+                    }
+                }
+                composable<EinstellungenRoute> {
+                    SettingsRoute(
+                        onLogout = {
+                            FirebaseAuth.getInstance().signOut()
+                            navController.navigate(LoginScreenRoute) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
+                        },
+                    )
                 }
             }
-            composable<EinstellungenRoute> { EinstellungenPlaceholderScreen() }
         }
-    }
-}
-
-// ---- Platzhalter-Screens ------------------------------------------------
-
-@Composable
-private fun GesundheitPlaceholderScreen(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = stringResource(R.string.nav_gesundheit))
-    }
-}
-
-@Composable
-private fun EinstellungenPlaceholderScreen(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = stringResource(R.string.nav_einstellungen))
     }
 }

@@ -607,3 +607,56 @@ Produktionsreife: Performance, Sicherheit, Accessibility, Store-Vorbereitung.
 - App-Name finalisieren
 - Signed Release-APK / AAB
 - Manuelle End-to-End-Verifizierung auf Testgeraet
+
+---
+
+### Snapshot Post-6.3 Bugfixes & Feature-Completions (2026-03-08)
+
+**Status:** ABGESCHLOSSEN
+
+**Fix 1 — EXIF-Bildrotation:**
+- `ThumbnailManagerImpl.applyExifRotation()`: liest EXIF-Orientierung via `ExifInterface(stream)`, wendet `Matrix.postRotate/postScale` an; Originalbitmap wird recycelt; `else -> return bitmap` bei NORMAL/unbekannt (kein alloc)
+- `androidx-exifinterface:1.3.7` in Version Catalog + `core/media/build.gradle.kts`
+
+**Fix 2 — Health-UI vollstaendig:**
+
+| Datei | Beschreibung |
+|---|---|
+| `feature/health/.../HealthUiState.kt` | Loading/Success(tabs)/Error sealed interface |
+| `feature/health/.../HealthViewModel.kt` | combine(vaccinations, medRecords, meds) -> StateFlow |
+| `feature/health/.../HealthScreen.kt` | TabRow (Impfungen / Akte / Medikamente) + background2_health.png |
+
+- `GesundheitRoute` -> `HealthRoute()` in MainActivity (kein Platzhalter mehr)
+- `:feature:health` als Dependency in `app/build.gradle.kts`
+
+**Fix 3 — Settings vollstaendig:**
+
+| Datei | Beschreibung |
+|---|---|
+| `feature/settings/.../SettingsUiState.kt` | ThemeMode Enum (LIGHT/DARK/SYSTEM) + UiState |
+| `feature/settings/.../SettingsViewModel.kt` | DataStore<Preferences> fuer ThemeMode-Persistenz |
+| `feature/settings/.../SettingsScreen.kt` | ThemeMode-Auswahl + Logout-Button |
+| `feature/settings/.../di/SettingsModule.kt` | Hilt @Provides DataStore |
+
+- `EinstellungenRoute` -> `SettingsRoute(onLogout)` in MainActivity
+- Theme wird in `TierappApp` via `TierappTheme(darkTheme = settingsState.themeMode)` angewendet
+- Logout: `FirebaseAuth.getInstance().signOut()` + nav to LoginScreenRoute
+- `app/build.gradle.kts`: +signingConfig aus Env-Vars (KEYSTORE_PATH/PASSWORD, KEY_ALIAS/PASSWORD)
+
+**Fix 4 — Family-Code-Normalisierung:**
+- `FamilyRepositoryImpl.joinByInviteCode()`: `inviteCode.trim().uppercase()` vor Firestore-Query
+- Nach erfolgreichem Join: `fetchMembers(remoteFamily.id)` -> alle bestehenden Mitglieder lokal speichern
+
+**Fix 5 — Branding:**
+- `strings.xml`: +`branding_footer = "VibeCode Solutions"`
+- `MainActivity.kt`: `Column { NavigationBar { ... }; Text(branding_footer, alpha=0.35f) }` unterhalb NavBar
+
+**Mitglieder-Realtime-Sync:**
+- `FamilyFirestoreDataSource`: +Interface-Methoden `fetchMembers` + `observeMembers`; Impl via `callbackFlow + awaitClose`
+- `RealtimeSyncObserver`: Dritter `launch`-Block fuer Member-Listener; alle drei Listener in `runCatching { ... }.onFailure { Log.e }` -- kein unhandled Exception mehr
+- `docs/firestore.rules`: `allow read` aufgeteilt: `allow list: isAuthenticated()` (fuer `whereEqualTo("inviteCode",...)`) + `allow get: isFamilyMember()` (Einzeldokument)
+
+**Architektonische Entscheidungen:**
+- `applyExifRotation` oeffnet InputStream zweimal (decode + exif) -- beides sequenziell, kein Parallel-Problem; URI-Calls sind billig vs. OOM-Risiko
+- `allow list` auf families-Collection: vertretbar, da Invite-Codes 8-stellig Base32 (~1 Billion Kombinationen); kein Klartext-Datum im Family-Dokument
+- `SettingsViewModel` haelt DataStore-Preference als `Flow<ThemeMode>`; `TierappApp` konsumiert via `collectAsStateWithLifecycle` -- Theme-Switch ohne Activity-Restart dank Compose-Recomposition

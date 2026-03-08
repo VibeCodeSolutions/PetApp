@@ -63,7 +63,8 @@ internal class FamilyRepositoryImpl @Inject constructor(
 
     override suspend fun joinByInviteCode(inviteCode: String, user: AuthUser): TierResult<Family> {
         return try {
-            val remoteFamily = familyFirestoreDataSource.getFamilyByInviteCode(inviteCode)
+            val normalizedCode = inviteCode.trim().uppercase()
+            val remoteFamily = familyFirestoreDataSource.getFamilyByInviteCode(normalizedCode)
                 ?: return TierResult.Error(Exception("Ungültiger Einladungscode"))
 
             val now = Instant.now()
@@ -77,6 +78,10 @@ internal class FamilyRepositoryImpl @Inject constructor(
                 joinedAt = now,
             )
             familyDao.insertFamily(remoteFamily.toEntity())
+            // Alle bestehenden Mitglieder (inkl. Owner) aus Firestore laden und lokal speichern
+            val existingMembers = familyFirestoreDataSource.fetchMembers(remoteFamily.id)
+            existingMembers.forEach { familyDao.insertMember(it.toEntity()) }
+            // Neues Mitglied lokal + remote eintragen
             familyDao.insertMember(member.toEntity())
             familyFirestoreDataSource.addMember(remoteFamily.id, member)
             TierResult.Success(remoteFamily)

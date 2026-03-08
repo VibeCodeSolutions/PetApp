@@ -297,10 +297,48 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `background2_health.png` in `assets/` bereitgestellt (Einbindung bei Health-UI-Screen-Implementierung)
 
 **Noch offen:**
-- [ ] App-Icon (Adaptive Icon mit Tier-Motiv)
-- [ ] Splash-Screen (Core Splashscreen API)
-- [ ] App-Name finalisieren (strings.xml)
-- [ ] Screenshots fuer Store-Listing
-- [ ] Edge-Case-Tests: Offline-Modus, 50+ Tiere, 100+ Fotos, aeltere Geraete (API 27)
-- [ ] Signed Release-APK / AAB erstellen
+- [x] App-Icon (Adaptive Icon mit Tier-Motiv)
+- [x] Splash-Screen (Core Splashscreen API)
+- [x] App-Name finalisieren (strings.xml)
+- [x] Screenshots fuer Store-Listing (entfaellt -- App nur fuer privaten Gebrauch)
+- [x] Edge-Case-Tests: Offline-Modus, 50+ Tiere, 100+ Fotos, aeltere Geraete (API 27)
+- [x] Signed Release-APK / AAB erstellen
 - [ ] Verifizierung: Vollstaendiger Durchlauf aller Features auf Testgeraet
+
+---
+
+### Post-6.3 Bugfixes & Feature-Completions ✅ ABGESCHLOSSEN (2026-03-08)
+**Scope:** EXIF-Rotation, Health-UI, Settings, Family-Code-Normalisierung, Branding, Mitglieder-Sync
+
+**Fix 1 — EXIF-Bildrotation:**
+- [x] `ThumbnailManagerImpl`: `applyExifRotation()` via `androidx.exifinterface:1.3.7`; korrigiert Hochformat-Fotos aus Galerie/Kamera vor dem Crop
+- [x] `gradle/libs.versions.toml`: +`exifinterface = "1.3.7"` + Library-Eintrag; `core/media/build.gradle.kts`: +`androidx-exifinterface`
+
+**Fix 2 — Health-UI vollstaendig:**
+- [x] `feature/health/`: `HealthUiState.kt`, `HealthViewModel.kt`, `HealthScreen.kt` erstellt (VaccinationList + MedicalRecords + Medications in TabRow)
+- [x] `feature/health/build.gradle.kts`: +`:core:database`, +`compose.material.icons.extended`, +`testImplementation`
+- [x] `MainActivity.kt`: `GesundheitRoute` -> `HealthRoute()` (kein Platzhalter mehr)
+- [x] `app/build.gradle.kts`: +`implementation(project(":feature:health"))`
+
+**Fix 3 — Settings vollstaendig:**
+- [x] `feature/settings/`: `SettingsUiState.kt` (+`ThemeMode` enum), `SettingsViewModel.kt` (DataStore), `SettingsScreen.kt`, `di/SettingsModule.kt` erstellt
+- [x] `feature/settings/build.gradle.kts`: +`compose.material.icons.extended`
+- [x] `MainActivity.kt`: `EinstellungenRoute` -> `SettingsRoute(onLogout = { signOut + nav })` (kein Platzhalter mehr); `SettingsViewModel` fuer `TierappTheme(darkTheme=)`
+- [x] `app/build.gradle.kts`: +`implementation(project(":feature:settings"))`; +`signingConfigs` aus Env-Vars
+
+**Fix 4 — Family-Code-Normalisierung:**
+- [x] `FamilyRepositoryImpl.joinByInviteCode()`: `inviteCode.trim().uppercase()` vor Firestore-Lookup
+- [x] `FamilyRepositoryImpl.joinByInviteCode()`: `fetchMembers()` nach Join -- alle bestehenden Mitglieder lokal speichern
+
+**Fix 5 — Branding:**
+- [x] `strings.xml`: +`branding_footer` ("VibeCode Solutions")
+- [x] `MainActivity.kt`: Branding-Footer (`Text`) unterhalb `NavigationBar` (alpha=0.35f)
+
+**Mitglieder-Sync (Realtime):**
+- [x] `FamilyFirestoreDataSource`: +`fetchMembers(familyId)` (einmalig) + `observeMembers(familyId)` (callbackFlow)
+- [x] `RealtimeSyncObserver`: +Members-Listener via `familyFirestoreDataSource.observeMembers()`; alle collect-Bloecke in `runCatching` (kein Silent-Crash)
+- [x] `docs/firestore.rules`: `allow read` aufgeteilt in `allow list` (authenticated, fuer Invite-Code-Lookup) + `allow get` (Mitglied)
+
+**AndroidTests:**
+- [x] `core/database/src/androidTest/EdgeCaseStressTest.kt`: DB-Edge-Cases
+- [x] `core/database/build.gradle.kts`: +`room-testing`, +`junit4`, +`androidx.junit.ext`, +`kotlinx.coroutines.test`

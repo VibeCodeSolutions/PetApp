@@ -4,6 +4,9 @@ import com.example.tierapp.core.model.Family
 import com.example.tierapp.core.model.FamilyMember
 import com.example.tierapp.core.model.MemberRole
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.time.Instant
 import javax.inject.Inject
@@ -18,6 +21,12 @@ interface FamilyFirestoreDataSource {
 
     /** Fügt ein neues Mitglied zur Familie in Firestore hinzu. */
     suspend fun addMember(familyId: String, member: FamilyMember)
+
+    /** Liest alle aktuellen Mitglieder einer Familie aus Firestore (einmalig). */
+    suspend fun fetchMembers(familyId: String): List<FamilyMember>
+
+    /** Realtime-Flow: emittiert bei jeder Mitglieder-Änderung die aktuelle Liste. */
+    fun observeMembers(familyId: String): kotlinx.coroutines.flow.Flow<List<FamilyMember>>
 }
 
 @Singleton
@@ -31,7 +40,8 @@ internal class FamilyFirestoreDataSourceImpl @Inject constructor(
         val familyRef = firestore.collection("families").document(family.id)
         batch.set(familyRef, family.toFirestoreMap())
 
-        val memberRef = familyRef.collection("members").document(owner.id)
+        // Dokument-ID = Firebase-UID, damit isFamilyMember(familyId) in den Security Rules greift
+        val memberRef = familyRef.collection("members").document(owner.userId)
         batch.set(memberRef, owner.toFirestoreMap())
 
         batch.commit().await()
@@ -49,9 +59,32 @@ internal class FamilyFirestoreDataSourceImpl @Inject constructor(
 
     override suspend fun addMember(familyId: String, member: FamilyMember) {
         firestore.collection("families").document(familyId)
-            .collection("members").document(member.id)
+            .collection("members").document(member.userId)
             .set(member.toFirestoreMap())
             .await()
+    }
+
+    override suspend fun fetchMembers(familyId: String): List<FamilyMember> {
+        val snapshot = firestore.collection("families").document(familyId)
+            .collection("members")
+            .get()
+            .await()
+        return snapshot.documents.mapNotNull { doc ->
+            doc.data?.toFamilyMember(doc.id)
+        }
+    }
+
+    override fun observeMembers(familyId: String): Flow<List<FamilyMember>> = callbackFlow {
+        val registration = firestore.collection("families").document(familyId)
+            .collection("members")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+                val members = snapshot.documents.mapNotNull { doc ->
+                    doc.data?.toFamilyMember(doc.id)
+                }
+                trySend(members)
+            }
+        awaitClose { registration.remove() }
     }
 }
 
