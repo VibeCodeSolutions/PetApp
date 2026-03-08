@@ -77,13 +77,15 @@ internal class FamilyRepositoryImpl @Inject constructor(
                 role = MemberRole.MEMBER,
                 joinedAt = now,
             )
-            familyDao.insertFamily(remoteFamily.toEntity())
-            // Alle bestehenden Mitglieder (inkl. Owner) aus Firestore laden und lokal speichern
-            val existingMembers = familyFirestoreDataSource.fetchMembers(remoteFamily.id)
-            existingMembers.forEach { familyDao.insertMember(it.toEntity()) }
-            // Neues Mitglied lokal + remote eintragen
-            familyDao.insertMember(member.toEntity())
+            // 1) Eigenes Member-Dokument ZUERST in Firestore schreiben,
+            //    damit isFamilyMember(familyId) in den Security Rules greift.
             familyFirestoreDataSource.addMember(remoteFamily.id, member)
+            // 2) Jetzt darf der Client die Members-Subcollection lesen.
+            val existingMembers = familyFirestoreDataSource.fetchMembers(remoteFamily.id)
+            // 3) Alles lokal in Room speichern (SSOT)
+            familyDao.insertFamily(remoteFamily.toEntity())
+            existingMembers.forEach { familyDao.insertMember(it.toEntity()) }
+            familyDao.insertMember(member.toEntity())
             TierResult.Success(remoteFamily)
         } catch (e: Exception) {
             TierResult.Error(e)

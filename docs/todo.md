@@ -230,7 +230,7 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `SyncPreferences` (SharedPreferences) fuer lastSyncTimestamp
 - [x] `SyncScheduler` fuer periodischen + einmaligen Sync + PhotoUpload-Scheduling
 - [x] 12 SyncResolverTest + 9 SyncEngineTest (Test-First)
-- [ ] `ReminderRefreshWorker` blockiert (Health-Entities fehlen in DB) -- Sprint 3.3-Nacharbeit
+- [x] `ReminderRefreshWorker` implementiert (Health-DB vorhanden via Sprint 3.3-Nacharbeit) -- siehe Post-6.3
 - [ ] Verifizierung: Aenderung auf Geraet A erscheint auf Geraet B
 
 ### Sprint 5.4: Bild-Sync ✅ ABGESCHLOSSEN (2026-03-07)
@@ -326,9 +326,11 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `MainActivity.kt`: `EinstellungenRoute` -> `SettingsRoute(onLogout = { signOut + nav })` (kein Platzhalter mehr); `SettingsViewModel` fuer `TierappTheme(darkTheme=)`
 - [x] `app/build.gradle.kts`: +`implementation(project(":feature:settings"))`; +`signingConfigs` aus Env-Vars
 
-**Fix 4 — Family-Code-Normalisierung:**
+**Fix 4 — Family-Join-Bugfixes:**
 - [x] `FamilyRepositoryImpl.joinByInviteCode()`: `inviteCode.trim().uppercase()` vor Firestore-Lookup
-- [x] `FamilyRepositoryImpl.joinByInviteCode()`: `fetchMembers()` nach Join -- alle bestehenden Mitglieder lokal speichern
+- [x] `FamilyRepositoryImpl.joinByInviteCode()`: `addMember()` VOR `fetchMembers()` -- behebt deterministischen "Permission Denied" (Security Rule `isFamilyMember` prueft Member-Dokument, das vorher fehlt)
+- [x] `docs/bugfix-family-join-permission-denied.md`: TCRTE-Analyse des Bugs
+- [x] `feature/family/src/test/.../FamilyRepositoryImplTest.kt`: 3 Unit-Tests (InOrder-Verifikation addMember→fetchMembers, ungültiger Code, Code-Normalisierung)
 
 **Fix 5 — Branding:**
 - [x] `strings.xml`: +`branding_footer` ("VibeCode Solutions")
@@ -342,3 +344,32 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 **AndroidTests:**
 - [x] `core/database/src/androidTest/EdgeCaseStressTest.kt`: DB-Edge-Cases
 - [x] `core/database/build.gradle.kts`: +`room-testing`, +`junit4`, +`androidx.junit.ext`, +`kotlinx.coroutines.test`
+
+---
+
+### ReminderRefreshWorker ✅ ABGESCHLOSSEN (2026-03-08)
+**Scope:** Background-Worker fuer Notification-Refresh nach erfolgreichem Sync
+
+**Neue Dateien:**
+
+| Modul | Datei |
+|---|---|
+| `:core:notifications` | `ReminderRefreshScheduler.kt` -- Interface fuer testbare DI in :core:sync |
+| `:core:notifications` | `ReminderRefreshWorker.kt` -- `@HiltWorker`: VaccinationDao + MedicationDao; storniert Health-Notifications (per Tag), postet neue fuer Impftermine (30-Tage-Fenster) und Low-Stock-Medis (< 5 Tage Vorrat) |
+| `:core:notifications` | `WorkManagerReminderRefreshScheduler.kt` -- Impl: `enqueueUniqueWork(REPLACE, OneTimeWorkRequest)` |
+| `:core:notifications` | `di/NotificationsModule.kt` -- Hilt: `@Binds ReminderRefreshScheduler` + `@Provides WorkManager` |
+| `:core:sync` (test) | `SyncWorkerTest.kt` -- 8 Unit-Tests via `SyncWorkerDelegate` (Lambda-Ansatz, kein WorkManager-Infra) |
+
+**Geaenderte Dateien:**
+
+| Datei | Aenderung |
+|---|---|
+| `core/notifications/build.gradle.kts` | +:core:database, +work-runtime-ktx, +hilt-work, +ksp(hilt-compiler) |
+| `core/sync/build.gradle.kts` | +:core:notifications (impl), +mockito-kotlin (testImpl) |
+| `core/sync/.../SyncWorker.kt` | +`reminderRefreshScheduler: ReminderRefreshScheduler` via `@AssistedInject`; `scheduleOneTimeRefresh()` bei `SyncResult.Success` |
+| `gradle/libs.versions.toml` | +`mockitoKotlin = "5.4.0"` + Library-Eintrag (bereits in feature/family vorhanden) |
+
+**Architektur-Entscheidung:**
+- `:core:notifications` abhaengig von `:core:database`; `:core:sync` abhaengig von `:core:notifications` -- kein Zyklus
+- `ReminderRefreshScheduler`-Interface in `:core:notifications`: entkoppelt `SyncWorker` von WorkManager-Laufzeit in Tests
+- `SyncWorkerDelegate` (Lambda-basiert, kein `CoroutineWorker`-Wrapper): testet Business-Logik ohne Reflection-Mocking finaler Kotlin-Klassen

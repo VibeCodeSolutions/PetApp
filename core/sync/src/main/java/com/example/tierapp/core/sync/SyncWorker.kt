@@ -6,6 +6,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.tierapp.core.database.dao.FamilyDao
+import com.example.tierapp.core.notifications.ReminderRefreshScheduler
 import com.google.firebase.auth.FirebaseAuth
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -17,6 +18,7 @@ class SyncWorker @AssistedInject constructor(
     private val syncEngine: SyncEngine,
     private val firebaseAuth: FirebaseAuth,
     private val familyDao: FamilyDao,
+    private val reminderRefreshScheduler: ReminderRefreshScheduler,
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -34,6 +36,7 @@ class SyncWorker @AssistedInject constructor(
         return when (val result = syncEngine.sync(familyId)) {
             is SyncResult.Success -> {
                 Log.d(TAG, "Sync completed successfully for family $familyId")
+                reminderRefreshScheduler.scheduleOneTimeRefresh()
                 Result.success()
             }
             is SyncResult.PermanentError -> {

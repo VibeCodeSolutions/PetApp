@@ -643,9 +643,11 @@ Produktionsreife: Performance, Sicherheit, Accessibility, Store-Vorbereitung.
 - Logout: `FirebaseAuth.getInstance().signOut()` + nav to LoginScreenRoute
 - `app/build.gradle.kts`: +signingConfig aus Env-Vars (KEYSTORE_PATH/PASSWORD, KEY_ALIAS/PASSWORD)
 
-**Fix 4 — Family-Code-Normalisierung:**
-- `FamilyRepositoryImpl.joinByInviteCode()`: `inviteCode.trim().uppercase()` vor Firestore-Query
-- Nach erfolgreichem Join: `fetchMembers(remoteFamily.id)` -> alle bestehenden Mitglieder lokal speichern
+**Fix 4 — Family-Join-Bugfixes:**
+- `FamilyRepositoryImpl.joinByInviteCode()`: `inviteCode.trim().uppercase()` vor Firestore-Query (Code-Normalisierung)
+- **KRITISCH — Permission-Denied-Fix:** `addMember()` (Firestore-Write) wird jetzt VOR `fetchMembers()` (Firestore-Read) ausgefuehrt. Vorher: `fetchMembers` schlug mit "Permission Denied" fehl, weil Security Rule `isFamilyMember(familyId)` das Member-Dokument prueft, das erst nach `addMember` existiert. Jetzt: deterministische Reihenfolge addMember→fetchMembers→Room-Writes.
+- `docs/bugfix-family-join-permission-denied.md`: vollstaendige TCRTE-Analyse (3-Schichten-Deduktion)
+- `feature/family/src/test/.../FamilyRepositoryImplTest.kt`: 3 Unit-Tests mit Mockito `inOrder`-Verifikation
 
 **Fix 5 — Branding:**
 - `strings.xml`: +`branding_footer = "VibeCode Solutions"`
@@ -660,3 +662,48 @@ Produktionsreife: Performance, Sicherheit, Accessibility, Store-Vorbereitung.
 - `applyExifRotation` oeffnet InputStream zweimal (decode + exif) -- beides sequenziell, kein Parallel-Problem; URI-Calls sind billig vs. OOM-Risiko
 - `allow list` auf families-Collection: vertretbar, da Invite-Codes 8-stellig Base32 (~1 Billion Kombinationen); kein Klartext-Datum im Family-Dokument
 - `SettingsViewModel` haelt DataStore-Preference als `Flow<ThemeMode>`; `TierappApp` konsumiert via `collectAsStateWithLifecycle` -- Theme-Switch ohne Activity-Restart dank Compose-Recomposition
+
+---
+
+### Snapshot ReminderRefreshWorker + Family-Join-Fix (2026-03-08)
+
+**Status:** ABGESCHLOSSEN
+
+#### ReminderRefreshWorker
+
+**Neue Dateien:**
+
+| Modul | Datei | Beschreibung |
+|---|---|---|
+| `:core:notifications` | `ReminderRefreshScheduler.kt` | Interface -- entkoppelt `SyncWorker` von WorkManager-Laufzeit fuer Unit-Tests |
+| `:core:notifications` | `ReminderRefreshWorker.kt` | `@HiltWorker` -- storniert Health-Notifications (by tag), postet neue fuer Impftermine ≤ 30 Tage + Low-Stock-Meds (< 5 Tage Vorrat) |
+| `:core:notifications` | `WorkManagerReminderRefreshScheduler.kt` | Produktionsimplementierung via `WorkManager.enqueueUniqueWork(REPLACE)` |
+| `:core:notifications` | `di/NotificationsModule.kt` | Hilt: `@Binds ReminderRefreshScheduler` + `@Provides WorkManager` |
+| `:core:sync` (test) | `SyncWorkerTest.kt` | 8 Unit-Tests (Success triggert Scheduler, Fehler/Auth/keine Familie triggern NICHT) |
+
+**Geaenderte Dateien:**
+
+| Datei | Aenderung |
+|---|---|
+| `core/notifications/build.gradle.kts` | +:core:database, +work-runtime-ktx, +hilt-work, +ksp(hilt-compiler) |
+| `core/sync/build.gradle.kts` | +:core:notifications (impl), +mockito-kotlin (testImpl) |
+| `core/sync/.../SyncWorker.kt` | +`reminderRefreshScheduler` via `@AssistedInject`; `scheduleOneTimeRefresh()` nach `SyncResult.Success` |
+
+**Modulabhaengigkeitsgraph (relevant):**
+```
+:core:notifications  → :core:database, :core:model
+:core:sync           → :core:notifications (neu), :core:database, :core:network, :core:model
+```
+Kein Zyklus. `:core:notifications` haengt nie von `:core:sync` ab.
+
+**Architektonische Entscheidungen:**
+- `ReminderRefreshScheduler`-Interface (in `:core:notifications`) statt direkter `WorkManager.enqueueUniqueWork`-Aufruf in `SyncWorker`: erlaubt `FakeReminderRefreshScheduler` in Unit-Tests ohne WorkManager-Infrastruktur
+- `SyncWorkerDelegate` (Lambda `syncFn: suspend (String) -> SyncResult`): testet SyncWorker-Logik ohne Subclassing der finalen `SyncEngine`-Klasse und ohne Reflexion-Mocking; Lambda ist ein idiomatischer Kotlin-Fake
+- Notification-IDs: `entity.id.hashCode()` -- deterministisch + stabil; ermoeoflicht idempotentes Re-Posting (kein Doppel-Notification bei Worker-Retry)
+- `cancelStaleReminders()` per `activeNotifications.filter { it.tag == NOTIF_TAG }` statt `cancelAll()` -- loescht nur Health-Reminder, keine anderen App-Notifications (z.B. Sync-Status-Channel)
+
+#### Family-Join-Fix
+
+- Deterministische Race-Condition: `addMember()` muss VOR `fetchMembers()` stehen (Firestore Security Rule `isFamilyMember` setzt Member-Dokument voraus)
+- `FamilyRepositoryImplTest.kt`: InOrder-Verifikation (Mockito) sichert korrekte Reihenfolge dauerhaft ab
+- Vollstaendige TCRTE-Analyse in `docs/bugfix-family-join-permission-denied.md`
