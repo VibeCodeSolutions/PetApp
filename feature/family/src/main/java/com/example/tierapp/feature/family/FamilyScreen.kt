@@ -70,9 +70,10 @@ fun FamilyScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(uiState) {
-        if (uiState is FamilyUiState.Error) {
-            snackbarHostState.showSnackbar((uiState as FamilyUiState.Error).message)
+    val errorMessage = (uiState as? FamilyUiState.Error)?.message
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(errorMessage)
             viewModel.dismissError()
         }
     }

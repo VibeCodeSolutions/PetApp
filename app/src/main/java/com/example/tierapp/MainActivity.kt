@@ -49,7 +49,6 @@ import com.example.tierapp.feature.pets.PetListRoute
 import com.example.tierapp.feature.settings.SettingsRoute
 import com.example.tierapp.feature.settings.SettingsViewModel
 import com.example.tierapp.feature.settings.ThemeMode
-import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.Serializable
 import kotlin.reflect.KClass
@@ -249,7 +248,7 @@ private fun TierappApp(
                 composable<EinstellungenRoute> {
                     SettingsRoute(
                         onLogout = {
-                            FirebaseAuth.getInstance().signOut()
+                            authViewModel.signOut()
                             navController.navigate(LoginScreenRoute) {
                                 popUpTo(navController.graph.id) { inclusive = true }
                             }

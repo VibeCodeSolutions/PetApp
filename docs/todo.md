@@ -373,3 +373,28 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - `:core:notifications` abhaengig von `:core:database`; `:core:sync` abhaengig von `:core:notifications` -- kein Zyklus
 - `ReminderRefreshScheduler`-Interface in `:core:notifications`: entkoppelt `SyncWorker` von WorkManager-Laufzeit in Tests
 - `SyncWorkerDelegate` (Lambda-basiert, kein `CoroutineWorker`-Wrapper): testet Business-Logik ohne Reflection-Mocking finaler Kotlin-Klassen
+
+---
+
+### Code-Review Phase 6 ✅ ABGESCHLOSSEN (2026-03-08)
+**Scope:** 12 Befunde aus Opus-Architektur-Review (3 CRITICAL, 5 WARNING, 4 REFACTOR)
+**Dateien:** 14 Dateien in 6 Modulen
+
+**CRITICAL — 3 Befunde:**
+- [x] `PetDetailViewModel.kt`: `generateThumbs()` in `withContext(Dispatchers.IO)` — blockierender Bitmap-I/O nicht mehr auf Main-Thread
+- [x] `HealthViewModel.kt`: `_retryTrigger: MutableStateFlow<Int>` + `flatMapLatest`-Wrapper um gesamten uiState-Flow — Flow terminiert nach Fehler nicht mehr dauerhaft; `dismissError()` inkrementiert Trigger
+- [x] `PetPhotoDao.kt`: `getPhotosNeedingUpload()` erfasst jetzt auch `uploadStatus = 'UPLOADING'` — verhindert dauerhaft verwaiste Fotos bei Worker-Kill
+
+**WARNING — 5 Befunde:**
+- [x] `SyncEngine.kt`: Race-Condition-Fix — SYNCED wird nur gesetzt wenn `syncStatus == PENDING && updatedAt == pet.updatedAt` (verhindert Silent-Drop von Aenderungen zwischen Push und Status-Update)
+- [x] `MainActivity.kt`: `FirebaseAuth.getInstance().signOut()` -> `authViewModel.signOut()` (Clean Architecture, kein direkter Firebase-Zugriff in UI); Import entfernt
+- [x] `FamilyViewModel.kt`: Double-Subscribe-Fix -- `combine(observeCurrentFamily(), observeCurrentFamily()...)` -> single `flatMapLatest { family -> observeMembers().map { } }` (1 Room-Observer statt 2)
+- [x] `ThumbnailManagerImpl.kt`: EXIF einmalig in `generateThumbs()` via `readExifOrientation()` lesen, als `Int` an `generateThumb()` weitergeben -- 6 -> 5 I/O-Opens pro `generateThumbs`-Aufruf; `applyExifRotationWithOrientation(bitmap, Int)` ohne ContentResolver-Aufruf
+- [x] `RealtimeSyncObserver.kt`: Alle 3 Listener (Pets/Photos/Members) in `while(true)` + exponential Backoff (1s → 60s) gewrappt -- Listener stirbt nicht mehr bei transientem Fehler
+- [x] `PetListScreen.kt` + `GalleryScreen.kt`: `Crossfade` -> `AnimatedContent(contentKey = { it::class })` -- Animation nur bei State-Typ-Wechsel, nicht bei jedem Daten-Update
+
+**REFACTOR — 4 Befunde:**
+- [x] `SyncScheduler.kt`: `familyId`-Parameter + `workDataOf`-Aufrufe entfernt (toter Code, Worker lesen nie InputData); `workDataOf`-Import entfernt
+- [x] `FamilyScreen.kt`: `LaunchedEffect(uiState)` -> `LaunchedEffect(errorMessage)` -- LaunchedEffect-Overhead bei jedem State-Wechsel eliminiert
+- [x] `FamilyRepositoryImpl.kt`: Doppelter `insertMember`-Call nach `fetchMembers` ersetzt durch Guard `if (allMembers.none { it.userId == member.userId })`
+- [x] `LoginViewModel.kt`: Toter `if (e is GetCredentialException) ... else ...`-Branch mit identischen Strings zu `e.message ?: "..."` vereinfacht; `GetCredentialException`-Import entfernt

@@ -11,6 +11,7 @@ import com.example.tierapp.core.network.firestore.FamilyFirestoreDataSource
 import com.example.tierapp.core.network.firestore.FirestoreDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -55,38 +56,59 @@ class RealtimeSyncObserver @Inject constructor(
             }
 
             launch {
-                runCatching {
-                    firestoreDataSource.observePets(familyId).collect { pets ->
-                        Log.d(TAG, "Snapshot: ${pets.size} Pets empfangen")
-                        syncEngine.applyRemoteSnapshot(pets = pets)
-                    }
-                }.onFailure { e ->
-                    Log.e(TAG, "Fehler im Pets-Listener", e)
-                }
-            }
-
-            launch {
-                runCatching {
-                    firestoreDataSource.observePhotos(familyId).collect { photos ->
-                        Log.d(TAG, "Snapshot: ${photos.size} Photos empfangen")
-                        syncEngine.applyRemoteSnapshot(photos = photos)
-                    }
-                }.onFailure { e ->
-                    Log.e(TAG, "Fehler im Photos-Listener", e)
-                }
-            }
-
-            // Neu: Mitglieder-Sync — hält beide Geräte aktuell wenn jemand beitritt
-            launch {
-                runCatching {
-                    familyFirestoreDataSource.observeMembers(familyId).collect { members ->
-                        Log.d(TAG, "Snapshot: ${members.size} Members empfangen")
-                        members.forEach { member ->
-                            familyDao.insertMember(member.toEntity())
+                var retryDelayMs = 1_000L
+                while (true) {
+                    val result = runCatching {
+                        firestoreDataSource.observePets(familyId).collect { pets ->
+                            retryDelayMs = 1_000L
+                            Log.d(TAG, "Snapshot: ${pets.size} Pets empfangen")
+                            syncEngine.applyRemoteSnapshot(pets = pets)
                         }
                     }
-                }.onFailure { e ->
-                    Log.e(TAG, "Fehler im Members-Listener", e)
+                    if (result.isFailure) {
+                        Log.e(TAG, "Fehler im Pets-Listener, retry in ${retryDelayMs}ms", result.exceptionOrNull())
+                        delay(retryDelayMs)
+                        retryDelayMs = (retryDelayMs * 2).coerceAtMost(60_000L)
+                    } else break
+                }
+            }
+
+            launch {
+                var retryDelayMs = 1_000L
+                while (true) {
+                    val result = runCatching {
+                        firestoreDataSource.observePhotos(familyId).collect { photos ->
+                            retryDelayMs = 1_000L
+                            Log.d(TAG, "Snapshot: ${photos.size} Photos empfangen")
+                            syncEngine.applyRemoteSnapshot(photos = photos)
+                        }
+                    }
+                    if (result.isFailure) {
+                        Log.e(TAG, "Fehler im Photos-Listener, retry in ${retryDelayMs}ms", result.exceptionOrNull())
+                        delay(retryDelayMs)
+                        retryDelayMs = (retryDelayMs * 2).coerceAtMost(60_000L)
+                    } else break
+                }
+            }
+
+            // Mitglieder-Sync — hält beide Geräte aktuell wenn jemand beitritt
+            launch {
+                var retryDelayMs = 1_000L
+                while (true) {
+                    val result = runCatching {
+                        familyFirestoreDataSource.observeMembers(familyId).collect { members ->
+                            retryDelayMs = 1_000L
+                            Log.d(TAG, "Snapshot: ${members.size} Members empfangen")
+                            members.forEach { member ->
+                                familyDao.insertMember(member.toEntity())
+                            }
+                        }
+                    }
+                    if (result.isFailure) {
+                        Log.e(TAG, "Fehler im Members-Listener, retry in ${retryDelayMs}ms", result.exceptionOrNull())
+                        delay(retryDelayMs)
+                        retryDelayMs = (retryDelayMs * 2).coerceAtMost(60_000L)
+                    } else break
                 }
             }
         }

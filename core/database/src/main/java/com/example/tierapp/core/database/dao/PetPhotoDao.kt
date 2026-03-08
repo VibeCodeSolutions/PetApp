@@ -53,7 +53,7 @@ interface PetPhotoDao {
 
     @Query("""
         SELECT * FROM pet_photo
-        WHERE (uploadStatus = 'LOCAL_ONLY' OR uploadStatus = 'FAILED')
+        WHERE (uploadStatus = 'LOCAL_ONLY' OR uploadStatus = 'FAILED' OR uploadStatus = 'UPLOADING')
           AND isDeleted = 0
         ORDER BY createdAt ASC
         LIMIT 200

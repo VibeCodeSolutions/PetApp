@@ -20,15 +20,25 @@ class ThumbnailManagerImpl @Inject constructor(
     override fun generateThumbs(sourceUri: Uri): ThumbnailManager.ThumbnailResult {
         val thumbDir = File(context.filesDir, "thumbs").also { it.mkdirs() }
         val baseName = UUID.randomUUID().toString()
-        val small = generateThumb(sourceUri, sizePx = 150, dest = File(thumbDir, "s_$baseName.jpg"))
-        val medium = generateThumb(sourceUri, sizePx = 400, dest = File(thumbDir, "m_$baseName.jpg"))
+        // EXIF einmalig lesen — gilt für beide Thumbnails (spart 2 I/O-Operationen)
+        val exifOrientation = readExifOrientation(sourceUri)
+        val small = generateThumb(sourceUri, sizePx = 150, dest = File(thumbDir, "s_$baseName.jpg"), exifOrientation = exifOrientation)
+        val medium = generateThumb(sourceUri, sizePx = 400, dest = File(thumbDir, "m_$baseName.jpg"), exifOrientation = exifOrientation)
         return ThumbnailManager.ThumbnailResult(
             thumbSmallPath = small.absolutePath,
             thumbMediumPath = medium.absolutePath,
         )
     }
 
-    private fun generateThumb(uri: Uri, sizePx: Int, dest: File): File {
+    private fun readExifOrientation(uri: Uri): Int =
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            ExifInterface(stream).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL,
+            )
+        } ?: ExifInterface.ORIENTATION_NORMAL
+
+    private fun generateThumb(uri: Uri, sizePx: Int, dest: File, exifOrientation: Int): File {
         // Pass 1: Abmessungen ermitteln ohne das Bitmap in den Speicher zu laden
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(uri)?.use { stream ->
@@ -43,8 +53,8 @@ class ThumbnailManagerImpl @Inject constructor(
             BitmapFactory.decodeStream(stream, null, opts)
         } ?: error("Cannot decode image from URI: $uri")
 
-        // EXIF-Orientierung korrigieren (verhindert gedrehte Bilder aus der Galerie)
-        val oriented = applyExifRotation(source, uri)
+        // EXIF-Orientierung anwenden (Orientation bereits gecacht, kein weiterer I/O)
+        val oriented = applyExifRotationWithOrientation(source, exifOrientation)
 
         val (srcW, srcH) = oriented.width to oriented.height
         val cropSize = minOf(srcW, srcH)
@@ -62,17 +72,10 @@ class ThumbnailManagerImpl @Inject constructor(
     }
 
     /**
-     * Liest die EXIF-Orientierung und gibt ein korrekt gedrehtes/gespiegeltes Bitmap zurück.
+     * Wendet EXIF-Orientierung als int direkt an — ohne erneuten ContentResolver-Aufruf.
      * Das Original-Bitmap wird recycelt wenn ein neues erstellt wird.
      */
-    private fun applyExifRotation(bitmap: Bitmap, uri: Uri): Bitmap {
-        val orientation = context.contentResolver.openInputStream(uri)?.use { stream ->
-            ExifInterface(stream).getAttributeInt(
-                ExifInterface.TAG_ORIENTATION,
-                ExifInterface.ORIENTATION_NORMAL,
-            )
-        } ?: ExifInterface.ORIENTATION_NORMAL
-
+    private fun applyExifRotationWithOrientation(bitmap: Bitmap, orientation: Int): Bitmap {
         val matrix = Matrix()
         when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)

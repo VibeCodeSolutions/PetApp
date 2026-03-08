@@ -707,3 +707,79 @@ Kein Zyklus. `:core:notifications` haengt nie von `:core:sync` ab.
 - Deterministische Race-Condition: `addMember()` muss VOR `fetchMembers()` stehen (Firestore Security Rule `isFamilyMember` setzt Member-Dokument voraus)
 - `FamilyRepositoryImplTest.kt`: InOrder-Verifikation (Mockito) sichert korrekte Reihenfolge dauerhaft ab
 - Vollstaendige TCRTE-Analyse in `docs/bugfix-family-join-permission-denied.md`
+
+---
+
+### Snapshot Code-Review Phase 6 (2026-03-08)
+
+**Status:** ABGESCHLOSSEN
+
+Opus-Architektur-Review identifizierte 12 Befunde (3 CRITICAL, 5 WARNING, 4 REFACTOR). Alle implementiert.
+
+#### CRITICAL
+
+**PetDetailViewModel — Main-Thread-Blocking:**
+- `thumbnailManager.generateThumbs(uri)` war ohne Dispatcher auf Main; `viewModelScope` dispatcht auf `Dispatchers.Main`
+- Fix: `withContext(Dispatchers.IO) { thumbnailManager.generateThumbs(uri) }`
+- Imports ergaenzt: `kotlinx.coroutines.Dispatchers`, `kotlinx.coroutines.withContext`
+
+**HealthViewModel — Dead-Flow nach erstem Fehler:**
+- `.catch { emit(...) }` terminiert den gesamten upstream Flow -- `dismissError()` war No-Op
+- Fix: `_retryTrigger: MutableStateFlow<Int>`; gesamter uiState-Flow in `_retryTrigger.flatMapLatest { }` gewrappt; `dismissError()` inkrementiert `_retryTrigger.value`
+- Analoges Pattern zu PetListViewModel und GalleryViewModel
+
+**PetPhotoDao — Stuck-Photo-Bug:**
+- `getPhotosNeedingUpload()` filterte nur `LOCAL_ONLY` und `FAILED`; bei Worker-Kill waehrend Upload blieben Fotos dauerhaft in `UPLOADING` verwaist
+- Fix: `OR uploadStatus = 'UPLOADING'` ergaenzt
+
+#### WARNING
+
+**SyncEngine — Race-Condition Push:**
+- SYNCED wurde gesetzt wenn `syncStatus == PENDING`, aber User-Edit zwischen Push und Status-Update konnte diese Bedingung erfuellen und die neue Aenderung loeschen
+- Fix: zusaetzliche Pruefung `&& current.updatedAt == pet.updatedAt` (fuer Pets und Photos)
+
+**MainActivity — Clean-Architecture-Verletzung:**
+- `FirebaseAuth.getInstance().signOut()` direkt in UI-Schicht; `SyncScheduler.cancelAll()` wurde nie aufgerufen
+- Fix: `authViewModel.signOut()` (nutzt `authRepository.signOut()`); `FirebaseAuth`-Import entfernt
+
+**FamilyViewModel — Doppelter Flow-Subscribe:**
+- `familyRepository.observeCurrentFamily()` zweimal in `combine()` aufgerufen -- 2 Room-Observer statt 1
+- Fix: Single `flatMapLatest { family -> observeMembers().map { members -> HasFamily(...) } }`; `combine`-Import durch `map`-Import ersetzt
+
+**ThumbnailManagerImpl — 6 statt 5 I/O-Opens:**
+- EXIF-Read war in `generateThumb()` -- bei 2 Groessen (small+medium) = 6 Opens (1 Bounds + 1 EXIF + 1 Decode pro Thumbnail)
+- Fix: `readExifOrientation(uri): Int` in `generateThumbs()` einmalig aufgerufen; `generateThumb()` bekommt `exifOrientation: Int`-Parameter; `applyExifRotationWithOrientation(bitmap, Int)` ohne ContentResolver; 5 Opens gesamt
+
+**RealtimeSyncObserver — Silent Listener Death:**
+- `runCatching { ... }.onFailure { Log.e }` beendete Coroutine nach erstem Fehler dauerhaft
+- Fix: Alle 3 Listener (Pets/Photos/Members) in `while(true)`-Retry-Loop mit exponential Backoff (1s → Verdopplung → max. 60s); `delay`-Import ergaenzt
+
+**PetListScreen + GalleryScreen — Crossfade-Overfire:**
+- `Crossfade(targetState = uiState)` animierte bei JEDEM Daten-Update (Success-State mit neuer Liste ist neues Objekt)
+- Fix: `AnimatedContent(contentKey = { it::class }, transitionSpec = { fadeIn() togetherWith fadeOut() })` -- Animation nur bei State-Typ-Wechsel; `Crossfade`-Import durch `AnimatedContent/fadeIn/fadeOut/togetherWith`-Imports ersetzt
+
+#### REFACTOR
+
+**SyncScheduler — Toter familyId-Parameter:**
+- `requestImmediateSync(familyId: String? = null)` und `schedulePhotoUpload(familyId: String? = null)` setzten `InputData`, die Worker nie lesen
+- Fix: Parameter entfernt; `workDataOf`-Import entfernt
+
+**FamilyScreen — LaunchedEffect-Overhead:**
+- `LaunchedEffect(uiState)` feuerte bei JEDEM State-Wechsel (Cancel + Relaunch-Overhead)
+- Fix: `val errorMessage = (uiState as? FamilyUiState.Error)?.message; LaunchedEffect(errorMessage) { if (errorMessage != null) ... }`
+
+**FamilyRepositoryImpl — Doppelter insertMember:**
+- `fetchMembers()` gibt bereits den eigenen Member zurueck (nach `addMember`); zusaetzliches `insertMember(member)` verursachte unnoetige Room-Operation + Observer-Emission
+- Fix: `if (allMembers.none { it.userId == member.userId }) { familyDao.insertMember(member.toEntity()) }`
+
+**LoginViewModel — Toter Branch:**
+- `if (e is GetCredentialException) { e.message ?: "..." } else { e.message ?: "..." }` -- identische Strings in beiden Zweigen
+- Fix: `e.message ?: "Google Sign-In fehlgeschlagen"`; `GetCredentialException`-Import entfernt
+
+#### Positiv-Befunde (Review -- kein Handlungsbedarf)
+- Kein `runBlocking`, `GlobalScope`, `Thread.sleep` in gesamter Codebasis
+- `collectAsStateWithLifecycle()` konsistent in allen Screens
+- `SharingStarted.WhileSubscribed(5_000)` korrekt in allen ViewModels
+- Offline-First-Architektur sauber durchgezogen (Room als SSOT)
+- `SyncResolver` deterministisch (LWW + Delete-Wins)
+- Worker-Retry-Logik mit MAX_RETRIES-Guard korrekt

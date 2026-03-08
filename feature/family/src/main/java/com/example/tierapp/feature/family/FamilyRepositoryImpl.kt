@@ -81,11 +81,15 @@ internal class FamilyRepositoryImpl @Inject constructor(
             //    damit isFamilyMember(familyId) in den Security Rules greift.
             familyFirestoreDataSource.addMember(remoteFamily.id, member)
             // 2) Jetzt darf der Client die Members-Subcollection lesen.
-            val existingMembers = familyFirestoreDataSource.fetchMembers(remoteFamily.id)
+            val allMembers = familyFirestoreDataSource.fetchMembers(remoteFamily.id)
             // 3) Alles lokal in Room speichern (SSOT)
             familyDao.insertFamily(remoteFamily.toEntity())
-            existingMembers.forEach { familyDao.insertMember(it.toEntity()) }
-            familyDao.insertMember(member.toEntity())
+            allMembers.forEach { familyDao.insertMember(it.toEntity()) }
+            // Eigenen Member nur inserten wenn er NICHT in allMembers enthalten ist
+            // (Firestore-Propagation kann verzögert sein)
+            if (allMembers.none { it.userId == member.userId }) {
+                familyDao.insertMember(member.toEntity())
+            }
             TierResult.Success(remoteFamily)
         } catch (e: Exception) {
             TierResult.Error(e)

@@ -8,7 +8,6 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,12 +42,10 @@ class SyncScheduler @Inject constructor(
         )
     }
 
-    fun requestImmediateSync(familyId: String? = null) {
-        val data = familyId?.let { workDataOf(SyncWorker.KEY_FAMILY_ID to it) }
+    fun requestImmediateSync() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(networkConstraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-            .apply { if (data != null) setInputData(data) }
             .build()
 
         workManager.enqueueUniqueWork(
@@ -58,12 +55,10 @@ class SyncScheduler @Inject constructor(
         )
     }
 
-    fun schedulePhotoUpload(familyId: String? = null) {
-        val data = familyId?.let { workDataOf(PhotoUploadWorker.KEY_FAMILY_ID to it) }
+    fun schedulePhotoUpload() {
         val request = OneTimeWorkRequestBuilder<PhotoUploadWorker>()
             .setConstraints(uploadConstraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 60, TimeUnit.SECONDS)
-            .apply { if (data != null) setInputData(data) }
             .build()
 
         workManager.enqueueUniqueWork(

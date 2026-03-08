@@ -66,9 +66,10 @@ class SyncEngine @Inject constructor(
                 firestoreDataSource.pushPets(familyId, chunk.map { it.toDomain() })
             }
             for (pet in pendingPets) {
-                // Only mark SYNCED if still PENDING (race-condition guard)
                 val current = petDao.getByIdDirect(pet.id)
-                if (current?.syncStatus == SyncStatus.PENDING) {
+                if (current?.syncStatus == SyncStatus.PENDING
+                    && current.updatedAt == pet.updatedAt
+                ) {
                     petDao.updateSyncStatus(pet.id, SyncStatus.SYNCED)
                 }
             }
@@ -82,7 +83,9 @@ class SyncEngine @Inject constructor(
             }
             for (photo in pendingPhotos) {
                 val current = petPhotoDao.getByIdDirect(photo.id)
-                if (current?.syncStatus == SyncStatus.PENDING) {
+                if (current?.syncStatus == SyncStatus.PENDING
+                    && current.updatedAt == photo.updatedAt
+                ) {
                     petPhotoDao.updateSyncStatus(photo.id, SyncStatus.SYNCED)
                 }
             }

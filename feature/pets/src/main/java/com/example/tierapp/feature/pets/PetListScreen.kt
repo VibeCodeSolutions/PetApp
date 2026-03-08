@@ -1,6 +1,9 @@
 package com.example.tierapp.feature.pets
 
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -93,8 +96,10 @@ internal fun PetListScreen(
                 }
             },
         ) { innerPadding ->
-        Crossfade(
+        AnimatedContent(
             targetState = uiState,
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            contentKey = { it::class },
             label = "pet_list_content",
             modifier = Modifier.padding(innerPadding),
         ) { state ->

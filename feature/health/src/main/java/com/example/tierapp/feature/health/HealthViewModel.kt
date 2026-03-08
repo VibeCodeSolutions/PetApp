@@ -33,36 +33,39 @@ class HealthViewModel @Inject constructor(
 
     private val _selectedPetId = MutableStateFlow<String?>(null)
     private val _dialogVisible = MutableStateFlow(false)
+    private val _retryTrigger = MutableStateFlow(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState = combine(
-        petRepository.getAll(),
-        _selectedPetId,
-        _dialogVisible,
-    ) { pets, selectedId, dialog ->
-        Triple(pets, selectedId ?: pets.firstOrNull()?.id, dialog)
-    }.flatMapLatest { (pets, petId, dialog) ->
-        if (petId == null) {
-            flowOf(HealthUiState(pets = pets, isLoading = false, showAddVaccinationDialog = dialog))
-        } else {
-            combine(
-                vaccinationRepository.getByPetId(petId),
-                vaccinationRepository.getUpcoming(daysAhead = 30),
-                medicationRepository.getByPetId(petId),
-            ) { vaccinations, upcoming, medications ->
-                HealthUiState(
-                    pets = pets,
-                    selectedPetId = petId,
-                    vaccinations = vaccinations.filter { !it.isDeleted },
-                    upcomingVaccinations = upcoming.filter { !it.isDeleted },
-                    medications = medications.filter { !it.isDeleted },
-                    isLoading = false,
-                    showAddVaccinationDialog = dialog,
-                )
+    val uiState = _retryTrigger.flatMapLatest {
+        combine(
+            petRepository.getAll(),
+            _selectedPetId,
+            _dialogVisible,
+        ) { pets, selectedId, dialog ->
+            Triple(pets, selectedId ?: pets.firstOrNull()?.id, dialog)
+        }.flatMapLatest { (pets, petId, dialog) ->
+            if (petId == null) {
+                flowOf(HealthUiState(pets = pets, isLoading = false, showAddVaccinationDialog = dialog))
+            } else {
+                combine(
+                    vaccinationRepository.getByPetId(petId),
+                    vaccinationRepository.getUpcoming(daysAhead = 30),
+                    medicationRepository.getByPetId(petId),
+                ) { vaccinations, upcoming, medications ->
+                    HealthUiState(
+                        pets = pets,
+                        selectedPetId = petId,
+                        vaccinations = vaccinations.filter { !it.isDeleted },
+                        upcomingVaccinations = upcoming.filter { !it.isDeleted },
+                        medications = medications.filter { !it.isDeleted },
+                        isLoading = false,
+                        showAddVaccinationDialog = dialog,
+                    )
+                }
             }
+        }.catch { e ->
+            emit(HealthUiState(isLoading = false, error = e.message))
         }
-    }.catch { e ->
-        emit(HealthUiState(isLoading = false, error = e.message))
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -114,6 +117,6 @@ class HealthViewModel @Inject constructor(
     }
 
     fun dismissError() {
-        // Error state is reset on next data emission; no explicit action needed
+        _retryTrigger.value++
     }
 }

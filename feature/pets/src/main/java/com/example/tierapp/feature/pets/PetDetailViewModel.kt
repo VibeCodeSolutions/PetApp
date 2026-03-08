@@ -11,6 +11,7 @@ import com.example.tierapp.core.model.PetRepository
 import com.example.tierapp.core.model.SyncStatus
 import com.example.tierapp.core.model.UploadStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -59,7 +61,7 @@ class PetDetailViewModel @Inject constructor(
             // Pet vor dem blockierenden I/O lesen — verhindert Waisenfoto bei Race Condition
             val current = petRepository.getById(petId).first() ?: return@launch
 
-            val thumbs = runCatching { thumbnailManager.generateThumbs(uri) }
+            val thumbs = runCatching { withContext(Dispatchers.IO) { thumbnailManager.generateThumbs(uri) } }
                 .onFailure { _errorEvent.trySend(PhotoError.GenerateFailed) }
                 .getOrNull() ?: return@launch
 

@@ -8,10 +8,10 @@ import com.example.tierapp.core.model.TierResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -26,30 +26,24 @@ class FamilyViewModel @Inject constructor(
     val uiState: StateFlow<FamilyUiState> = _uiState
 
     init {
-        combine(
-            familyRepository.observeCurrentFamily(),
-            familyRepository.observeCurrentFamily().flatMapLatest { family ->
+        familyRepository.observeCurrentFamily()
+            .flatMapLatest { family ->
                 if (family != null) {
-                    familyRepository.observeMembers(family.id)
+                    familyRepository.observeMembers(family.id).map { members ->
+                        FamilyUiState.HasFamily(family = family, members = members)
+                    }
                 } else {
-                    flowOf(emptyList())
+                    flowOf(FamilyUiState.NoFamily)
                 }
-            },
-        ) { family, members ->
-            if (family != null) {
-                FamilyUiState.HasFamily(family = family, members = members)
-            } else {
-                FamilyUiState.NoFamily
             }
-        }.onEach { newState ->
-            // Fehler-Zustand nicht überschreiben, wenn er vom User gesetzt wurde
-            if (_uiState.value !is FamilyUiState.Error) {
-                _uiState.value = newState
-            } else if (newState is FamilyUiState.HasFamily) {
-                // Erfolgreicher Zustand löst Fehler ab
-                _uiState.value = newState
+            .onEach { newState ->
+                if (_uiState.value !is FamilyUiState.Error) {
+                    _uiState.value = newState
+                } else if (newState is FamilyUiState.HasFamily) {
+                    _uiState.value = newState
+                }
             }
-        }.launchIn(viewModelScope)
+            .launchIn(viewModelScope)
     }
 
     fun createFamily(name: String, owner: AuthUser) {

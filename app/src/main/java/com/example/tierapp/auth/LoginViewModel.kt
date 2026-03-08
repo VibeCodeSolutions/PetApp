@@ -4,7 +4,6 @@ package com.example.tierapp.auth
 import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tierapp.core.model.TierResult
@@ -62,11 +61,7 @@ class LoginViewModel @Inject constructor(
                 onSuccess = { idToken -> signInWithGoogle(idToken) },
                 onFailure = { e ->
                     _uiState.value = LoginUiState.Error(
-                        if (e is GetCredentialException) {
-                            e.message ?: "Google Sign-In fehlgeschlagen"
-                        } else {
-                            e.message ?: "Google Sign-In fehlgeschlagen"
-                        }
+                        e.message ?: "Google Sign-In fehlgeschlagen"
                     )
                 },
             )

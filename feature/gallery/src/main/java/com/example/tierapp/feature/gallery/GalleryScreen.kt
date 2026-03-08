@@ -6,7 +6,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -136,8 +139,10 @@ internal fun GalleryScreen(
                 }
             },
         ) { innerPadding ->
-            Crossfade(
+            AnimatedContent(
                 targetState = uiState,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                contentKey = { it::class },
                 label = "gallery_content",
                 modifier = Modifier.padding(innerPadding),
             ) { state ->
