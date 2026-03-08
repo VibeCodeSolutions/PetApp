@@ -4,4 +4,14 @@
         daher reicht ein dunkler Plattform-Parent ohne MaterialComponents.
     -->
     <style name="Theme.Tierapp" parent="android:Theme.Material.NoActionBar" />
+
+    <!--
+        Splash-Screen-Theme (Dark): BgDeep-Hintergrund (#1A0D00) — warmes Tiefbraun
+        als komplementäre Nacht-Variante zur Creme-Palette.
+    -->
+    <style name="Theme.Tierapp.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#1A0D00</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Tierapp</item>
+    </style>
 </resources>

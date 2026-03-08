@@ -274,9 +274,29 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] Datenschutzerklaerung-Screen (`DatenschutzScreen.kt`, `DatenschutzRoute` in NavHost, Link im LoginScreen)
 - [ ] Verifizierung: TalkBack-Durchlauf, keine fehlenden Descriptions
 
-### Sprint 6.3: Release-Vorbereitung
-**Scope:** App-Icon, Splash, Store-Listing
-**Dateien:** `:app`, Ressourcen
+### Sprint 6.3: Release-Vorbereitung ⏳ IN BEARBEITUNG (2026-03-08)
+**Scope:** Edge-Case-Bugfixes, Assets, App-Icon, Splash, Store-Listing
+**Dateien:** `:app`, `:core:sync`, `:core:database`, `:core:media`, Ressourcen
+
+**Edge-Case-Bugfixes (2026-03-08):**
+- [x] OOM-Fix `ThumbnailManagerImpl`: Zwei-Pass `inSampleSize`-Decode -- kein Full-Bitmap mehr im Heap; `calculateInSampleSize()` (Potenz-von-2)
+- [x] `SyncResult` sealed class angelegt (`Success`, `TransientError(cause)`, `PermanentError(cause)`)
+- [x] `SyncEngine.sync()`: Rueckgabetyp `Boolean` -> `SyncResult`; `FirebaseFirestoreException`-Klassifizierung (PERMISSION_DENIED/UNAUTHENTICATED/INVALID_ARGUMENT/NOT_FOUND = Permanent; Rest = Transient)
+- [x] `SyncEngine.push()`: Listen-Chunking `chunked(FIRESTORE_BATCH_LIMIT=400)` fuer PENDING-Pets und -Photos
+- [x] `SyncWorker`: `SyncResult`-Handling -- `PermanentError -> Result.failure()`, `TransientError -> Result.retry()` (mit MAX_RETRIES=3-Guard)
+- [x] `PetPhotoDao.getPhotosNeedingUpload()`: `ORDER BY createdAt ASC LIMIT 200` (Pagination)
+- [x] `PhotoUploadEngine`: Early-Exit-Loop nach `MAX_CONSECUTIVE_FAILURES=2` aufeinanderfolgenden Fehlern; Counter-Reset bei Erfolg
+- [x] `core/sync/build.gradle.kts`: +`firebase-firestore-ktx`; +`androidTestImplementation`
+- [x] `SyncStressTest.kt` angelegt (7 Tests): Batch-Chunking (950->3 Chunks), Early-Exit-Verhalten, Counter-Reset, `inSampleSize`-Kalkulation 4000x3000/400x300/200x200
+
+**Asset-Integration (2026-03-08):**
+- [x] 4 PNG-Assets von `app/assets/` nach `app/src/main/assets/` verschoben (Standard-Android-Verzeichnis)
+- [x] `PetListScreen`: `background1_Dashboard.png` als `AsyncImage` hinter transparentem `Scaffold` (`containerColor = Color.Transparent`)
+- [x] `GalleryScreen`: `background3_Gallery.png` als erstes Kind der aeusseren `Box`, transparenter `Scaffold`
+- [x] `LoginScreen`: `foreground.png` als Vollbild-Hintergrund + schwarzer Scrim (`Color.Black.copy(alpha=0.45f)`) fuer Lesbarkeit
+- [x] `background2_health.png` in `assets/` bereitgestellt (Einbindung bei Health-UI-Screen-Implementierung)
+
+**Noch offen:**
 - [ ] App-Icon (Adaptive Icon mit Tier-Motiv)
 - [ ] Splash-Screen (Core Splashscreen API)
 - [ ] App-Name finalisieren (strings.xml)

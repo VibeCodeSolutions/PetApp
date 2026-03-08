@@ -31,18 +31,24 @@ class SyncWorker @AssistedInject constructor(
             return Result.success()
         }
 
-        if (runAttemptCount >= MAX_RETRIES) {
-            Log.e(TAG, "Max retries ($MAX_RETRIES) reached, giving up")
-            return Result.failure()
-        }
-
-        val success = syncEngine.sync(familyId)
-        return if (success) {
-            Log.d(TAG, "Sync completed successfully for family $familyId")
-            Result.success()
-        } else {
-            Log.w(TAG, "Sync failed, attempt $runAttemptCount/$MAX_RETRIES")
-            Result.retry()
+        return when (val result = syncEngine.sync(familyId)) {
+            is SyncResult.Success -> {
+                Log.d(TAG, "Sync completed successfully for family $familyId")
+                Result.success()
+            }
+            is SyncResult.PermanentError -> {
+                Log.e(TAG, "Permanent sync error, giving up", result.cause)
+                Result.failure()
+            }
+            is SyncResult.TransientError -> {
+                if (runAttemptCount >= MAX_RETRIES) {
+                    Log.e(TAG, "Max retries ($MAX_RETRIES) reached after transient error, giving up", result.cause)
+                    Result.failure()
+                } else {
+                    Log.w(TAG, "Transient sync error, attempt $runAttemptCount/$MAX_RETRIES, retrying", result.cause)
+                    Result.retry()
+                }
+            }
         }
     }
 

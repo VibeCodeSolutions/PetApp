@@ -9,6 +9,7 @@ import com.example.tierapp.core.model.Pet
 import com.example.tierapp.core.model.PetPhoto
 import com.example.tierapp.core.model.SyncStatus
 import com.example.tierapp.core.network.firestore.FirestoreDataSource
+import com.google.firebase.firestore.FirebaseFirestoreException
 import javax.inject.Inject
 
 class SyncEngine @Inject constructor(
@@ -22,32 +23,48 @@ class SyncEngine @Inject constructor(
     /**
      * Fuehrt einen vollstaendigen Sync-Zyklus aus:
      * 1. Pull: Aenderungen seit letztem Sync von Firestore holen und mergen
-     * 2. Push: Alle PENDING-Entities zu Firestore
+     * 2. Push: Alle PENDING-Entities zu Firestore (in Chunks <= FIRESTORE_BATCH_LIMIT)
      *
      * Pull-first stellt sicher, dass lokale PENDING-Entities mit neuerem
      * Timestamp nicht faelschlicherweise auf SYNCED gesetzt werden, bevor
      * der Konflikt-Resolver sie gegen Remote-Aenderungen pruefen kann.
      *
-     * @return true bei Erfolg, false bei Fehler
+     * @return [SyncResult.Success], [SyncResult.TransientError] oder [SyncResult.PermanentError]
      */
-    suspend fun sync(familyId: String): Boolean {
+    suspend fun sync(familyId: String): SyncResult {
         return try {
             pull(familyId)
             push(familyId)
             syncPreferences.lastSyncTimestamp = System.currentTimeMillis()
-            true
+            SyncResult.Success
+        } catch (e: FirebaseFirestoreException) {
+            when (e.code) {
+                FirebaseFirestoreException.Code.PERMISSION_DENIED,
+                FirebaseFirestoreException.Code.UNAUTHENTICATED,
+                FirebaseFirestoreException.Code.INVALID_ARGUMENT,
+                FirebaseFirestoreException.Code.NOT_FOUND -> {
+                    Log.e(TAG, "Permanent sync error [${e.code}]", e)
+                    SyncResult.PermanentError(e)
+                }
+                else -> {
+                    // UNAVAILABLE, DEADLINE_EXCEEDED, ABORTED, RESOURCE_EXHAUSTED = transient
+                    Log.w(TAG, "Transient sync error [${e.code}], will retry", e)
+                    SyncResult.TransientError(e)
+                }
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Sync failed", e)
-            false
+            Log.w(TAG, "Transient sync error, will retry", e)
+            SyncResult.TransientError(e)
         }
     }
 
     private suspend fun push(familyId: String) {
-        // Push pending pets
+        // Push pending pets in safe chunks (Firestore batch limit)
         val pendingPets = petDao.getPending()
         if (pendingPets.isNotEmpty()) {
-            val domainPets = pendingPets.map { it.toDomain() }
-            firestoreDataSource.pushPets(familyId, domainPets)
+            pendingPets.chunked(FIRESTORE_BATCH_LIMIT).forEach { chunk ->
+                firestoreDataSource.pushPets(familyId, chunk.map { it.toDomain() })
+            }
             for (pet in pendingPets) {
                 // Only mark SYNCED if still PENDING (race-condition guard)
                 val current = petDao.getByIdDirect(pet.id)
@@ -57,11 +74,12 @@ class SyncEngine @Inject constructor(
             }
         }
 
-        // Push pending photos
+        // Push pending photos in safe chunks (Firestore batch limit)
         val pendingPhotos = petPhotoDao.getPending()
         if (pendingPhotos.isNotEmpty()) {
-            val domainPhotos = pendingPhotos.map { it.toDomain() }
-            firestoreDataSource.pushPhotos(familyId, domainPhotos)
+            pendingPhotos.chunked(FIRESTORE_BATCH_LIMIT).forEach { chunk ->
+                firestoreDataSource.pushPhotos(familyId, chunk.map { it.toDomain() })
+            }
             for (photo in pendingPhotos) {
                 val current = petPhotoDao.getByIdDirect(photo.id)
                 if (current?.syncStatus == SyncStatus.PENDING) {
@@ -152,5 +170,11 @@ class SyncEngine @Inject constructor(
 
     companion object {
         private const val TAG = "SyncEngine"
+
+        /**
+         * Sicheres Limit unterhalb des Firestore-Batch-Limits (500),
+         * um Overhead bei gleichzeitigen Schreiboperationen zu vermeiden.
+         */
+        const val FIRESTORE_BATCH_LIMIT = 400
     }
 }

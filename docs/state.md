@@ -533,3 +533,77 @@ Produktionsreife: Performance, Sicherheit, Accessibility, Store-Vorbereitung.
 
 ### Abhaengigkeiten
 - Phase 5 muss abgeschlossen sein ✅
+
+---
+
+### Snapshot Sprint 6.3 -- Teilabschluss (2026-03-08)
+
+**Status:** IN BEARBEITUNG -- Edge-Case-Bugfixes + Asset-Integration abgeschlossen
+
+#### Edge-Case-Bugfixes
+
+**Neue Dateien:**
+
+| Modul | Datei |
+|---|---|
+| `:core:sync` | `SyncResult.kt` -- sealed class: `Success`, `TransientError(cause)`, `PermanentError(cause)` |
+| `:core:sync` (androidTest) | `SyncStressTest.kt` -- 7 Integrationstests |
+
+**Geaenderte Dateien:**
+
+| Datei | Aenderung |
+|---|---|
+| `core/media/.../ThumbnailManagerImpl.kt` | Zwei-Pass-Decode: Pass 1 `inJustDecodeBounds=true`; `calculateInSampleSize()` (Potenz-von-2); Pass 2 mit `inSampleSize` -- verhindert OOM bei Hochaufloesung |
+| `core/sync/.../SyncEngine.kt` | `sync()` gibt `SyncResult` statt `Boolean` zurueck; `push()` mit `chunked(FIRESTORE_BATCH_LIMIT=400)` fuer Pets und Photos; `catch(FirebaseFirestoreException)` klassifiziert Permanent- vs. Transient-Fehler; `import firebase.firestore.FirebaseFirestoreException` |
+| `core/sync/.../SyncWorker.kt` | `when(syncEngine.sync(familyId))` statt Boolean-Branch: `Success -> success()`, `PermanentError -> failure()`, `TransientError -> retry()` (mit MAX_RETRIES=3-Guard) |
+| `core/database/.../dao/PetPhotoDao.kt` | `getPhotosNeedingUpload()`: +`ORDER BY createdAt ASC LIMIT 200` -- verhindert unbegrenzte Batch-Groesse |
+| `core/sync/.../PhotoUploadEngine.kt` | `uploadPending()`: Early-Exit-Loop mit `consecutiveFailures`-Zaehler; Abbruch nach `MAX_CONSECUTIVE_FAILURES=2`; Counter-Reset bei Erfolg |
+| `core/sync/build.gradle.kts` | +`implementation(libs.firebase.firestore.ktx)`; +`androidTestImplementation(libs.junit4/kotlinx.coroutines.test)` |
+
+**SyncStressTest.kt (7 Tests):**
+- `chunking_splits_oversized_list_into_correct_batches`: 950 Items -> 3 Chunks (400+400+150)
+- `chunking_single_batch_when_below_limit`: 399 Items -> 1 Chunk
+- `upload_engine_early_exit_after_max_consecutive_failures`: 10 Fehler -> Abbruch nach 2
+- `upload_engine_resets_consecutive_counter_on_success`: Fehler-Erfolg-Fehler -> kein Early-Exit
+- `inSampleSize_4000x3000_for_150px_target_returns_8`: ergibt 16
+- `inSampleSize_400x300_for_150px_target_returns_1`: ergibt 2
+- `inSampleSize_small_image_returns_1`: 200x200 -> 1
+
+**Architektonische Entscheidungen:**
+- `SyncResult` als eigene Datei statt nested class -- vermeidet `SyncEngine.SyncResult`-Qualifier in SyncWorker
+- `FIRESTORE_BATCH_LIMIT = 400` statt 500 -- 20% Puffer gegen gleichzeitige Schreiboperationen anderer Worker-Instanzen
+- `FirebaseFirestoreException.Code.PERMISSION_DENIED/UNAUTHENTICATED` -> `PermanentError`: kein Retry sinnvoll (Auth-Problem); alle anderen Codes (UNAVAILABLE, DEADLINE_EXCEEDED, ABORTED etc.) -> `TransientError`: Retry mit Backoff sinnvoll
+- `MAX_CONSECUTIVE_FAILURES = 2` als `const val` in Companion -> direkt aus Tests referenzierbar (kein Magic Number in Test)
+
+---
+
+#### Asset-Integration
+
+**Neue Verzeichnisse:**
+- `app/src/main/assets/` -- Standard-Android-Assets-Verzeichnis (von Gradle automatisch erkannt)
+
+**Verschobene Dateien (von `app/assets/` nach `app/src/main/assets/`):**
+
+| Datei | Verwendung |
+|---|---|
+| `background1_Dashboard.png` | Hintergrundbild PetListScreen |
+| `background2_health.png` | Hintergrundbild Health-Screen (bereitgestellt, Einbindung bei UI-Implementierung) |
+| `background3_Gallery.png` | Hintergrundbild GalleryScreen |
+| `foreground.png` | Hero-Hintergrundbild LoginScreen |
+
+**Geaenderte Dateien:**
+
+| Datei | Aenderung |
+|---|---|
+| `feature/pets/.../PetListScreen.kt` | Scaffold in `Box` eingewickelt; `AsyncImage("file:///android_asset/background1_Dashboard.png")` als erstes Kind; `Scaffold(containerColor=Color.Transparent)`; +`import Color` |
+| `feature/gallery/.../GalleryScreen.kt` | `AsyncImage("file:///android_asset/background3_Gallery.png")` als erstes Kind der bestehenden aeusseren `Box`; `Scaffold(containerColor=Color.Transparent)` |
+| `app/.../auth/LoginScreen.kt` | `AsyncImage("file:///android_asset/foreground.png")` als erstes Kind der bestehenden `Box`; `Box(Modifier.background(Color.Black.copy(alpha=0.45f)))` als Scrim; +`import background, Color, ContentScale, coil3.compose.AsyncImage` |
+
+**Asset-Ladereferenz:** `"file:///android_asset/<dateiname>"` -- wird von Coil's `ContentResolver` ueber `AssetManager` aufgeloest; kein zusaetzlicher Coil-Fetcher noetig.
+
+**Offene Punkte (Sprint 6.3):**
+- App-Icon (Adaptive Icon)
+- Splash-Screen (Core Splashscreen API)
+- App-Name finalisieren
+- Signed Release-APK / AAB
+- Manuelle End-to-End-Verifizierung auf Testgeraet

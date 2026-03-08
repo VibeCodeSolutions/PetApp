@@ -55,6 +55,8 @@ interface PetPhotoDao {
         SELECT * FROM pet_photo
         WHERE (uploadStatus = 'LOCAL_ONLY' OR uploadStatus = 'FAILED')
           AND isDeleted = 0
+        ORDER BY createdAt ASC
+        LIMIT 200
     """)
     suspend fun getPhotosNeedingUpload(): List<PetPhotoEntity>
 

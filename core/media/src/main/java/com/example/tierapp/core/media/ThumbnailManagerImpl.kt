@@ -27,8 +27,19 @@ class ThumbnailManagerImpl @Inject constructor(
     }
 
     private fun generateThumb(uri: Uri, sizePx: Int, dest: File): File {
+        // Pass 1: Abmessungen ermitteln ohne das Bitmap in den Speicher zu laden
+        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream, null, opts)
+        }
+
+        // inSampleSize so berechnen, dass das dekodierte Bitmap mindestens sizePx groß ist
+        opts.inSampleSize = calculateInSampleSize(opts.outWidth, opts.outHeight, sizePx)
+        opts.inJustDecodeBounds = false
+
+        // Pass 2: Speicheroptimierter Decode mit berechneter Subsampling-Rate
         val source = context.contentResolver.openInputStream(uri)?.use { stream ->
-            BitmapFactory.decodeStream(stream)
+            BitmapFactory.decodeStream(stream, null, opts)
         } ?: error("Cannot decode image from URI: $uri")
 
         val (srcW, srcH) = source.width to source.height
@@ -43,5 +54,18 @@ class ThumbnailManagerImpl @Inject constructor(
         scaled.recycle()
 
         return dest
+    }
+
+    /**
+     * Berechnet die groesste Potenz-von-2-Subsampling-Rate, bei der das Bild
+     * noch mindestens [reqSizePx] in der kleinsten Dimension hat.
+     */
+    private fun calculateInSampleSize(width: Int, height: Int, reqSizePx: Int): Int {
+        var inSampleSize = 1
+        val smallestSide = minOf(width, height)
+        while (smallestSide / (inSampleSize * 2) >= reqSizePx) {
+            inSampleSize *= 2
+        }
+        return inSampleSize
     }
 }

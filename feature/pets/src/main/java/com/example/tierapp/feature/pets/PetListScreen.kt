@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
@@ -71,20 +72,27 @@ internal fun PetListScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Scaffold(
-        modifier = modifier,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAddPetClick,
-                containerColor = MaterialTheme.colorScheme.primary,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Tier hinzufügen",
-                )
-            }
-        },
-    ) { innerPadding ->
+    Box(modifier = modifier.fillMaxSize()) {
+        AsyncImage(
+            model = "file:///android_asset/background1_Dashboard.png",
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Scaffold(
+            containerColor = Color.Transparent,
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = onAddPetClick,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Tier hinzufügen",
+                    )
+                }
+            },
+        ) { innerPadding ->
         Crossfade(
             targetState = uiState,
             label = "pet_list_content",
@@ -102,6 +110,7 @@ internal fun PetListScreen(
                     onRetry = onRetry,
                 )
             }
+        }
         }
     }
 }

@@ -112,7 +112,14 @@ internal fun GalleryScreen(
     val fullscreenPhoto = photos.firstOrNull { it.id == fullscreenPhotoId }
 
     Box(modifier = modifier.fillMaxSize()) {
+        AsyncImage(
+            model = "file:///android_asset/background3_Gallery.png",
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
         Scaffold(
+            containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
                     title = { Text("Foto-Galerie") },

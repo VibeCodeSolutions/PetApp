@@ -14,7 +14,9 @@ class PhotoUploadEngine @Inject constructor(
 ) {
 
     /**
-     * Laedt alle LOCAL_ONLY/FAILED Fotos hoch.
+     * Laedt alle LOCAL_ONLY/FAILED Fotos hoch (max. 200 pro Aufruf, siehe PetPhotoDao.getPhotosNeedingUpload).
+     * Bricht fruehzeitig ab, wenn [MAX_CONSECUTIVE_FAILURES] aufeinanderfolgende Fehler auftreten,
+     * um bei Netzwerkausfall keinen langen Retry-Loop zu starten.
      *
      * @return true wenn alle erfolgreich, false wenn mindestens eines fehlgeschlagen
      */
@@ -23,9 +25,19 @@ class PhotoUploadEngine @Inject constructor(
         if (photos.isEmpty()) return true
 
         var allSuccess = true
+        var consecutiveFailures = 0
         for (photo in photos) {
             val success = uploadSingle(familyId, photo)
-            if (!success) allSuccess = false
+            if (success) {
+                consecutiveFailures = 0
+            } else {
+                allSuccess = false
+                consecutiveFailures++
+                if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                    Log.w(TAG, "Early exit: $consecutiveFailures consecutive upload failures")
+                    break
+                }
+            }
         }
         return allSuccess
     }
@@ -65,5 +77,6 @@ class PhotoUploadEngine @Inject constructor(
 
     companion object {
         private const val TAG = "PhotoUploadEngine"
+        const val MAX_CONSECUTIVE_FAILURES = 2
     }
 }

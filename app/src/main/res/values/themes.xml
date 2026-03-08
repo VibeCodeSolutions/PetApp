@@ -5,4 +5,15 @@
         TierappTheme (Compose) übernimmt vollständig Farben, Typo und Shapes.
     -->
     <style name="Theme.Tierapp" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!--
+        Splash-Screen-Theme (Light): Creme-Hintergrund (#FFF8F0) mit Paw-Foreground.
+        postSplashScreenTheme übergibt nach dem Splash nahtlos an Theme.Tierapp.
+        Die Activity referenziert dieses Theme in AndroidManifest.xml.
+    -->
+    <style name="Theme.Tierapp.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FFF8F0</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Tierapp</item>
+    </style>
 </resources>
