@@ -15,5 +15,5 @@
         Google Cloud Console (APIs & Services > Credentials > OAuth 2.0-Client-IDs).
         Die richtige ID steht auch in google-services.json unter "oauth_client[type=3].client_id".
     -->
-    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+    <string name="default_web_client_id">474664557293-pak7d728avugiqo29lmq6k6hef5iumel.apps.googleusercontent.com</string>
 </resources>

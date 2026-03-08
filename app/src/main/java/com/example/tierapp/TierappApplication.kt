@@ -48,6 +48,5 @@ class TierappApplication : Application(), Configuration.Provider, SingletonImage
                     .maxSizeBytes(250L * 1024 * 1024) // 250 MB
                     .build()
             }
-            .crossfade(true)
             .build()
 }

@@ -45,3 +45,6 @@ include(":feature:health")
 include(":feature:gallery")
 include(":feature:family")
 include(":feature:settings")
+
+// Performance
+include(":macrobenchmark")

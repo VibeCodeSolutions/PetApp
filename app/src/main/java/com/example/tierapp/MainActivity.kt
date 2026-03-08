@@ -33,6 +33,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.tierapp.auth.LoginRoute
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tierapp.core.ui.theme.TierappTheme
+import com.example.tierapp.feature.family.FamilyScreen
 import com.example.tierapp.feature.gallery.GalleryRoute
 import com.example.tierapp.feature.pets.PetDetailRoute
 import com.example.tierapp.feature.pets.PetEditRoute
@@ -199,7 +200,13 @@ private fun TierappApp(
                 )
             }
             composable<GesundheitRoute> { GesundheitPlaceholderScreen() }
-            composable<FamilieRoute> { FamiliePlaceholderScreen() }
+            composable<FamilieRoute> {
+                val currentUser =
+                    (authState as? com.example.tierapp.auth.LoginUiState.Authenticated)?.user
+                if (currentUser != null) {
+                    FamilyScreen(currentUser = currentUser)
+                }
+            }
             composable<EinstellungenRoute> { EinstellungenPlaceholderScreen() }
         }
     }
@@ -211,13 +218,6 @@ private fun TierappApp(
 private fun GesundheitPlaceholderScreen(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(text = stringResource(R.string.nav_gesundheit))
-    }
-}
-
-@Composable
-private fun FamiliePlaceholderScreen(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = stringResource(R.string.nav_familie))
     }
 }
 

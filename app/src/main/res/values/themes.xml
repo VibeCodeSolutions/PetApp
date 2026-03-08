@@ -4,5 +4,5 @@
         MaterialComponents wurde entfernt — kein com.google.android.material dependency nötig.
         TierappTheme (Compose) übernimmt vollständig Farben, Typo und Shapes.
     -->
-    <style name="Theme.Tierapp" parent="android:Theme.Material.Light.NoTitleBar" />
+    <style name="Theme.Tierapp" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

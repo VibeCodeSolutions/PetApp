@@ -71,6 +71,99 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `vaccination` (
+                `id` TEXT NOT NULL,
+                `petId` TEXT NOT NULL,
+                `name` TEXT NOT NULL,
+                `dateAdministered` INTEGER NOT NULL,
+                `intervalMonths` INTEGER,
+                `veterinarian` TEXT,
+                `batchNumber` TEXT,
+                `notes` TEXT,
+                `nextDueDate` INTEGER,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `syncStatus` TEXT NOT NULL,
+                `isDeleted` INTEGER NOT NULL,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`petId`) REFERENCES `pet`(`id`) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_vaccination_petId` ON `vaccination` (`petId`)")
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `medical_record` (
+                `id` TEXT NOT NULL,
+                `petId` TEXT NOT NULL,
+                `type` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
+                `description` TEXT,
+                `date` INTEGER NOT NULL,
+                `veterinarian` TEXT,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `syncStatus` TEXT NOT NULL,
+                `isDeleted` INTEGER NOT NULL,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`petId`) REFERENCES `pet`(`id`) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_medical_record_petId` ON `medical_record` (`petId`)")
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `medication` (
+                `id` TEXT NOT NULL,
+                `petId` TEXT NOT NULL,
+                `name` TEXT NOT NULL,
+                `dosage` TEXT NOT NULL,
+                `frequency` TEXT NOT NULL,
+                `currentStock` REAL NOT NULL,
+                `dailyConsumption` REAL NOT NULL,
+                `notes` TEXT,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `syncStatus` TEXT NOT NULL,
+                `isDeleted` INTEGER NOT NULL,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`petId`) REFERENCES `pet`(`id`) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_medication_petId` ON `medication` (`petId`)")
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `reminder` (
+                `id` TEXT NOT NULL,
+                `petId` TEXT NOT NULL,
+                `type` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
+                `referenceId` TEXT NOT NULL,
+                `triggerAt` INTEGER NOT NULL,
+                `isCompleted` INTEGER NOT NULL,
+                `isSnoozed` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `syncStatus` TEXT NOT NULL,
+                `isDeleted` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_reminder_referenceId_triggerAt` ON `reminder` (`referenceId`, `triggerAt`)"
+        )
+    }
+}
+
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

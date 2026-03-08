@@ -4,12 +4,17 @@ import android.content.Context
 import androidx.room.Room
 import com.example.tierapp.core.database.TierappDatabase
 import com.example.tierapp.core.database.dao.FamilyDao
+import com.example.tierapp.core.database.dao.MedicalRecordDao
+import com.example.tierapp.core.database.dao.MedicationDao
 import com.example.tierapp.core.database.dao.PetDao
 import com.example.tierapp.core.database.dao.PetPhotoDao
+import com.example.tierapp.core.database.dao.ReminderDao
+import com.example.tierapp.core.database.dao.VaccinationDao
 import com.example.tierapp.core.database.migration.MIGRATION_1_2
 import com.example.tierapp.core.database.migration.MIGRATION_2_3
 import com.example.tierapp.core.database.migration.MIGRATION_3_4
 import com.example.tierapp.core.database.migration.MIGRATION_4_5
+import com.example.tierapp.core.database.migration.MIGRATION_5_6
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,7 +35,7 @@ object DatabaseModule {
         TierappDatabase::class.java,
         "tierapp.db",
     )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
         .build()
 
     @Provides
@@ -41,4 +46,16 @@ object DatabaseModule {
 
     @Provides
     fun provideFamilyDao(db: TierappDatabase): FamilyDao = db.familyDao()
+
+    @Provides
+    fun provideVaccinationDao(db: TierappDatabase): VaccinationDao = db.vaccinationDao()
+
+    @Provides
+    fun provideMedicalRecordDao(db: TierappDatabase): MedicalRecordDao = db.medicalRecordDao()
+
+    @Provides
+    fun provideMedicationDao(db: TierappDatabase): MedicationDao = db.medicationDao()
+
+    @Provides
+    fun provideReminderDao(db: TierappDatabase): ReminderDao = db.reminderDao()
 }

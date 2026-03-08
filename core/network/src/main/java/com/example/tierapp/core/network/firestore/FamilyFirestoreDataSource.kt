@@ -72,22 +72,31 @@ private fun FamilyMember.toFirestoreMap(): Map<String, Any?> = mapOf(
     "joinedAt" to joinedAt.toEpochMilli(),
 )
 
-private fun Map<String, Any?>.toFamily(id: String): Family? = Family(
-    id = id,
-    name = this["name"] as? String ?: return null,
-    createdBy = this["createdBy"] as? String ?: return null,
-    inviteCode = this["inviteCode"] as? String ?: return null,
-    createdAt = Instant.ofEpochMilli(this["createdAt"] as? Long ?: 0L),
-    updatedAt = Instant.ofEpochMilli(this["updatedAt"] as? Long ?: 0L),
-)
+private fun Map<String, Any?>.toFamily(id: String): Family? {
+    val name = this["name"] as? String ?: return null
+    val createdBy = this["createdBy"] as? String ?: return null
+    val inviteCode = this["inviteCode"] as? String ?: return null
+    return Family(
+        id = id,
+        name = name,
+        createdBy = createdBy,
+        inviteCode = inviteCode,
+        createdAt = Instant.ofEpochMilli(this["createdAt"] as? Long ?: 0L),
+        updatedAt = Instant.ofEpochMilli(this["updatedAt"] as? Long ?: 0L),
+    )
+}
 
-private fun Map<String, Any?>.toFamilyMember(id: String): FamilyMember? = FamilyMember(
-    id = id,
-    familyId = this["familyId"] as? String ?: return null,
-    userId = this["userId"] as? String ?: return null,
-    displayName = this["displayName"] as? String ?: "",
-    email = this["email"] as? String ?: "",
-    role = (this["role"] as? String)?.let { runCatching { MemberRole.valueOf(it) }.getOrNull() }
-        ?: MemberRole.MEMBER,
-    joinedAt = Instant.ofEpochMilli(this["joinedAt"] as? Long ?: 0L),
-)
+private fun Map<String, Any?>.toFamilyMember(id: String): FamilyMember? {
+    val familyId = this["familyId"] as? String ?: return null
+    val userId = this["userId"] as? String ?: return null
+    return FamilyMember(
+        id = id,
+        familyId = familyId,
+        userId = userId,
+        displayName = this["displayName"] as? String ?: "",
+        email = this["email"] as? String ?: "",
+        role = (this["role"] as? String)?.let { runCatching { MemberRole.valueOf(it) }.getOrNull() }
+            ?: MemberRole.MEMBER,
+        joinedAt = Instant.ofEpochMilli(this["joinedAt"] as? Long ?: 0L),
+    )
+}

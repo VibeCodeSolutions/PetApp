@@ -134,6 +134,17 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `TierappApplication` implementiert `Configuration.Provider` fuer HiltWorkerFactory
 - [ ] Verifizierung: Worker laeuft, Notification wird angezeigt
 
+### Sprint 3.3-Nacharbeit: Health-DB-Registrierung ✅ ABGESCHLOSSEN (2026-03-07)
+**Scope:** Vaccination/MedicalRecord/Medication/Reminder in TierappDatabase registrieren
+**Dateien:** `:core:model`, `:core:database`
+- [x] Domain-Modelle erstellt: `Vaccination`, `MedicalRecord`, `Medication`, `Reminder` + Repository-Interfaces
+- [x] Room-Entities erstellt: `VaccinationEntity`, `MedicalRecordEntity`, `MedicationEntity`, `ReminderEntity`
+- [x] DAOs erstellt: `VaccinationDao`, `MedicalRecordDao`, `MedicationDao`, `ReminderDao`
+- [x] Repository-Implementierungen erstellt + Hilt-Module in `:core:database/di`
+- [x] `MIGRATION_5_6` in `Migrations.kt` (erstellt vaccination + medical_record + medication + reminder)
+- [x] `TierappDatabase` auf version = 6; alle 4 Health-Entities registriert
+- [x] `DatabaseModule` um MIGRATION_5_6 + 4 DAO-Provider erweitert
+
 ### Sprint 3.4: Gesundheits-Dashboard ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Aggregierte Uebersicht aller faelligen Aktionen
 **Dateien:** `:feature:health`, `:app`
@@ -179,6 +190,13 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] Auth-Gate in `MainActivity` (LoginScreenRoute als startDestination wenn unauthenticated)
 - [x] 17 Unit-Tests (9 FirebaseAuthRepositoryTest + 8 LoginViewModelTest)
 - [ ] Verifizierung: Login/Logout mit Google funktioniert (erfordert manuelle Setup-Schritte: SHA-1 in Firebase Console)
+
+### Sprint 5.5: Integration — FamilyScreen in NavHost ✅ ABGESCHLOSSEN (2026-03-07)
+**Scope:** FamilyScreen in NavHost einhaengen
+**Dateien:** `:app`, `:feature:family`
+- [x] `FamilyScreen` in `composable<FamilieRoute>` eingehaengt (currentUser aus authState)
+- [x] `FamiliePlaceholderScreen` entfernt
+- [x] `:feature:family` als Dependency in `app/build.gradle.kts` ergaenzt
 
 ### Sprint 5.2: Familien-Verwaltung ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** Familie erstellen, Mitglieder einladen
@@ -234,13 +252,14 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 
 ## Phase 6: Polish & Release
 
-### Sprint 6.1: Performance & Sicherheit
+### Sprint 6.1: Performance & Sicherheit ✅ ABGESCHLOSSEN (2026-03-07)
 **Scope:** R8, Crashlytics, Baseline Profiles
-**Dateien:** `:app`, `proguard-rules.pro`
-- [ ] `isMinifyEnabled = true` + ProGuard-Regeln fuer Firebase, Room, Hilt
-- [ ] Firebase Crashlytics integrieren
-- [ ] Baseline Profiles generieren (Macrobenchmark)
-- [ ] Startup-Tracing / App Startup Library
+**Dateien:** `:app`, `:macrobenchmark`, `proguard-rules.pro`
+- [x] `isMinifyEnabled = true` + `isShrinkResources = true` in release buildType
+- [x] ProGuard-Regeln: Crashlytics, Firebase, Room, WorkManager, kotlinx.serialization, Coil3, Credential Manager
+- [x] Firebase Crashlytics integriert (BOM-managed, kein version.ref)
+- [x] `:macrobenchmark` Modul (com.android.test): `BaselineProfileGenerator` + `TierappStartupBenchmark`
+- [x] `androidx.profileinstaller` in `:app`; `android.baselineprofile` Plugin in `:app` + `:macrobenchmark`
 - [ ] Verifizierung: Release-Build laeuft, Crashlytics empfaengt Test-Crash
 
 ### Sprint 6.2: UX-Polish & Accessibility

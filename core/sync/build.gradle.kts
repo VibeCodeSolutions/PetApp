@@ -15,6 +15,7 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:network"))
     implementation(project(":core:model"))
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
     ksp(libs.hilt.compiler)

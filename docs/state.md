@@ -284,7 +284,7 @@ Foto-Galerie pro Tier mit effizienter Bildverwaltung.
 
 ## Phase 5: Multi-Device & Cloud-Sync
 
-**Status:** IN BEARBEITUNG (Sprints 5.1 – 5.4 abgeschlossen; 5.5 Integration offen)
+**Status:** ABGESCHLOSSEN (Sprints 5.1 – 5.5 abgeschlossen)
 **Beginn:** 2026-03-07
 **Abschluss:** --
 
@@ -300,7 +300,7 @@ Familien-Konten und Offline-First Cloud-Synchronisation.
 - [x] SyncWorker: Push (PENDING -> Firestore) + Pull (Firestore -> Room)
 - [x] Konfliktaufloesung: Last-Write-Wins + feldbasiertes Merging
 - [x] PhotoUploadWorker: Bilder -> Firebase Storage
-- [ ] ReminderRefreshWorker: Erinnerungen nach Sync aktualisieren (blockiert: Health-Entities fehlen in DB)
+- [ ] ReminderRefreshWorker: Erinnerungen nach Sync aktualisieren (Health-DB jetzt vorhanden -- Sprint 3.3-Nacharbeit erledigt)
 - [ ] FamilyScreen in NavHost eingehaengt (Sprint 5.5)
 
 ### Snapshot Sprint 5.1 (2026-03-07)
@@ -416,10 +416,52 @@ Familien-Konten und Offline-First Cloud-Synchronisation.
 
 ---
 
+## Phase 5 -- Sprint 5.5 Snapshot (2026-03-07)
+
+**Abgeschlossen:** FamilyScreen in NavHost
+
+- `app/build.gradle.kts`: +`implementation(project(":feature:family"))`
+- `MainActivity.kt`: `composable<FamilieRoute>` ersetzt `FamiliePlaceholderScreen()` durch `FamilyScreen(currentUser)` (currentUser aus `authState as LoginUiState.Authenticated`)
+- `FamiliePlaceholderScreen`-Composable entfernt
+
+---
+
+## Phase 5 -- Sprint 3.3-Nacharbeit Snapshot (2026-03-07)
+
+**Abgeschlossen:** Health-Entities in DB registriert
+
+**DB-Stand nach Sprint 3.3-Nacharbeit:** Version 6, Tabellen: pet, pet_photo, family, family_member, vaccination, medical_record, medication, reminder
+
+**Neue Dateien:**
+
+| Modul | Datei |
+|---|---|
+| `:core:model` | `Vaccination.kt`, `VaccinationRepository.kt`, `MedicalRecord.kt`, `MedicalRecordRepository.kt`, `Medication.kt`, `MedicationRepository.kt`, `Reminder.kt`, `ReminderRepository.kt` |
+| `:core:database` | `entity/VaccinationEntity.kt`, `entity/MedicalRecordEntity.kt`, `entity/MedicationEntity.kt`, `entity/ReminderEntity.kt` |
+| `:core:database` | `dao/VaccinationDao.kt`, `dao/MedicalRecordDao.kt`, `dao/MedicationDao.kt`, `dao/ReminderDao.kt` |
+| `:core:database` | `repository/VaccinationRepositoryImpl.kt`, `repository/MedicalRecordRepositoryImpl.kt`, `repository/MedicationRepositoryImpl.kt`, `repository/ReminderRepositoryImpl.kt` |
+| `:core:database` | `di/VaccinationRepositoryModule.kt`, `di/MedicalRecordRepositoryModule.kt`, `di/MedicationRepositoryModule.kt`, `di/ReminderRepositoryModule.kt` |
+
+**Geaenderte Dateien:**
+- `migration/Migrations.kt`: +`MIGRATION_5_6` (erstellt alle 4 Health-Tabellen + Unique-Index fuer reminder)
+- `TierappDatabase.kt`: version 5 -> 6; +4 Health-Entities; +4 abstrakte DAO-Funktionen
+- `di/DatabaseModule.kt`: +`MIGRATION_5_6`; +4 DAO-Provider
+
+**Architektonische Entscheidungen:**
+- `ReminderEntity` Unique-Index auf `(referenceId, triggerAt)` -- `OnConflictStrategy.IGNORE` als atomarer Duplicate-Guard, keine manuelle Exists-Pruefung noetig
+- `MedicationDao.getActiveMedications()` ohne `todayEpochDay`-Parameter -- kein "aktiv bis Datum" im Schema (MVP); Worker liest alle nicht-geloeschten Eintraege
+- `Medication.daysRemaining` + `isLowStock` als Domain-Properties -- wiederverwendbar in Worker und Dashboard ohne Code-Duplizierung
+
+**Offene Punkte:**
+- `ReminderRefreshWorker` kann jetzt implementiert werden (Health-DB vorhanden)
+- `feature/health` UI-Screens (VaccinationListScreen, MedicalRecordListScreen, etc.) noch nicht erstellt
+
+---
+
 ## Phase 6: Polish & Release
 
-**Status:** OFFEN
-**Beginn:** --
+**Status:** IN BEARBEITUNG (Sprint 6.1 abgeschlossen)
+**Beginn:** 2026-03-07
 **Abschluss:** --
 
 ### Ziel
@@ -434,8 +476,15 @@ Produktionsreife: Performance, Sicherheit, Accessibility, Store-Vorbereitung.
 - [ ] App-Icon + Splash-Screen finalisiert
 - [ ] Edge-Case-Tests bestanden (Offline, viele Tiere, grosse Bilder)
 
-### Snapshot
-_Wird nach Abschluss der Phase ausgefuellt._
+### Snapshot Sprint 6.1 (2026-03-07)
+
+**Abgeschlossen:** Performance & Sicherheit
+
+- `app/build.gradle.kts`: `isMinifyEnabled = true`, `isShrinkResources = true`, Crashlytics-Plugin, `firebase-crashlytics` (BOM-managed), `androidx.profileinstaller`, `android.baselineprofile`-Plugin
+- `proguard-rules.pro`: Crashlytics Stack-Traces, Firebase/GMS dontwarn, Room-Entities, WorkManager-Worker-Konstruktoren, kotlinx.serialization, Coroutines, Coil3, Credential Manager, OkHttp/Retrofit
+- `gradle/libs.versions.toml`: `macrobenchmark`, `profileinstaller`, `uiautomator` Versionen + Library-Eintraege
+- `:macrobenchmark` Modul (com.android.test): `BaselineProfileGenerator` + `TierappStartupBenchmark`
+- `settings.gradle.kts`: `:macrobenchmark` registriert (15 Module gesamt)
 
 ### Abhaengigkeiten
-- Phase 5 muss abgeschlossen sein
+- Phase 5 muss abgeschlossen sein ✅

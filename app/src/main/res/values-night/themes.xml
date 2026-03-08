@@ -3,5 +3,5 @@
         Dark-Mode-Variante. Compose TierappTheme steuert alle Farben,
         daher reicht ein dunkler Plattform-Parent ohne MaterialComponents.
     -->
-    <style name="Theme.Tierapp" parent="android:Theme.Material.NoTitleBar" />
+    <style name="Theme.Tierapp" parent="android:Theme.Material.NoActionBar" />
 </resources>

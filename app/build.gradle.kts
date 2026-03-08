@@ -16,7 +16,8 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -26,11 +27,13 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:model"))
     implementation(project(":core:ui"))
     implementation(project(":core:database"))
     implementation(project(":core:network"))
     implementation(project(":core:sync"))
     implementation(project(":feature:pets"))
+    implementation(project(":feature:family"))
     implementation(project(":feature:gallery"))
     implementation(libs.coil.compose)
     implementation(project(":core:media"))
@@ -52,6 +55,8 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
     ksp(libs.hilt.compiler)
+
+    implementation(libs.androidx.profileinstaller)
 
     testImplementation(libs.junit4)
     testImplementation(libs.kotlinx.coroutines.test)
