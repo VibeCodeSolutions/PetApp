@@ -274,7 +274,7 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] Datenschutzerklaerung-Screen (`DatenschutzScreen.kt`, `DatenschutzRoute` in NavHost, Link im LoginScreen)
 - [ ] Verifizierung: TalkBack-Durchlauf, keine fehlenden Descriptions
 
-### Sprint 6.3: Release-Vorbereitung ⏳ IN BEARBEITUNG (2026-03-08)
+### Sprint 6.3: Release-Vorbereitung ✅ ABGESCHLOSSEN (2026-03-20)
 **Scope:** Edge-Case-Bugfixes, Assets, App-Icon, Splash, Store-Listing
 **Dateien:** `:app`, `:core:sync`, `:core:database`, `:core:media`, Ressourcen
 
@@ -296,14 +296,14 @@ Jeder Sprint ist so geschnitten, dass er in einer einzelnen Agent-Session (Konte
 - [x] `LoginScreen`: `foreground.png` als Vollbild-Hintergrund + schwarzer Scrim (`Color.Black.copy(alpha=0.45f)`) fuer Lesbarkeit
 - [x] `background2_health.png` in `assets/` bereitgestellt (Einbindung bei Health-UI-Screen-Implementierung)
 
-**Noch offen:**
-- [x] App-Icon (Adaptive Icon mit Tier-Motiv)
-- [x] Splash-Screen (Core Splashscreen API)
-- [x] App-Name finalisieren (strings.xml)
-- [x] Screenshots fuer Store-Listing (entfaellt -- App nur fuer privaten Gebrauch)
-- [x] Edge-Case-Tests: Offline-Modus, 50+ Tiere, 100+ Fotos, aeltere Geraete (API 27)
-- [x] Signed Release-APK / AAB erstellen
-- [ ] Verifizierung: Vollstaendiger Durchlauf aller Features auf Testgeraet
+**Release-Assets (2026-03-20):**
+- [x] App-Icon: Adaptive Icon mit Pfotenabdruck (Terracotta #C75B39 auf Honiggelb #F4A623)
+- [x] Splash-Screen: `Theme.Tierapp.Splash` + `installSplashScreen()` in MainActivity
+- [x] App-Name: "Tierapp" finalisiert
+
+**Ausstehend (manuell):**
+- [ ] Signed Release-AAB erstellen (benoetigt Keystore + Env-Vars)
+- [ ] End-to-End-Verifizierung auf Testgeraet
 
 ---
 
